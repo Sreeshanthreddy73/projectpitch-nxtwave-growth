@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import { CAMPAIGN, PLANNING_ASSUMPTIONS } from "@/lib/config";
-import { decimal, inr, num, pct } from "@/lib/format";
+import { BUDGET_PLAN, CAMPAIGN, PLANNING_ASSUMPTIONS, SOURCE_LABELS } from "@/lib/config";
+import { decimal, inr, inr2, num, pct } from "@/lib/format";
 import type { Metrics } from "@/lib/metrics";
 import { VARIANTS } from "@/lib/variants";
 import { Badge, Button, Card, cx, inputClass } from "../ui";
@@ -48,11 +48,13 @@ export function Funnel({ m }: { m: Metrics }) {
     { label: "Blueprints generated", value: totals.generators, rate: rates.visitToGenerate, rateLabel: "of visitors" },
     { label: "Registrations", value: totals.registrations, rate: rates.generateToRegister, rateLabel: "of generators" },
     { label: "Registrants who shared", value: totals.sharers, rate: rates.shareRate, rateLabel: "of registrants" },
+    { label: "Entry unlocked (verified referral)", value: totals.eligible, rate: m.eligibleRate, rateLabel: "of registrants" },
+    { label: "Projects submitted", value: totals.submissions, rate: m.submissionRate, rateLabel: "of unlocked" },
   ];
   const max = Math.max(totals.visitors, 1);
 
   return (
-    <Panel title="Funnel" hint="Unique sessions at each step, and the conversion from the step before.">
+    <Panel title="Funnel" hint="From first visit to competition entry. An entry unlocks only when a referred friend registers.">
       <ul className="space-y-3">
         {steps.map((step) => (
           <li key={step.label}>
@@ -133,7 +135,10 @@ export function SourceTable({ m }: { m: Metrics }) {
         >
           {m.bySource.map((s) => (
             <tr key={s.source}>
-              <td className={cx(td, "font-medium text-ink")}>{s.source}</td>
+              <td className={cx(td, "font-medium text-ink")}>
+                {SOURCE_LABELS[s.source] ?? s.source}
+                {SOURCE_LABELS[s.source] && <span className="ml-2 font-mono text-xs font-normal text-muted">{s.source}</span>}
+              </td>
               <td className={cx(td, "text-right")}>{num(s.visitors)}</td>
               <td className={cx(td, "text-right")}>{num(s.generators)}</td>
               <td className={cx(td, "text-right font-semibold text-ink")}>{num(s.registrations)}</td>
@@ -184,7 +189,14 @@ export function AbPanel({ m }: { m: Metrics }) {
   const { a, b, verdict } = m.ab;
   const tone = verdict.status === "winner" ? "good" : "warn";
   return (
-    <Panel title="A/B test: landing page hook" hint="Visitors are split 50/50 and keep their variant.">
+    <Panel
+      title="A/B test: project-first vs competition-first"
+      hint={
+        m.dataset === "demo"
+          ? "SIMULATED split. These are not real experiment results."
+          : "Visitors are split 50/50 and keep their variant."
+      }
+    >
       <Table
         head={[
           ["Variant", "left"],
@@ -337,7 +349,7 @@ export function Assumptions({ m }: { m: Metrics }) {
 
 export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }) {
   const editable = m.dataset === "real";
-  const [form, setForm] = useState({ label: "", amount: "", campaign: "" });
+  const [form, setForm] = useState({ label: "", amount: "", campaign: "", category: "acquisition" });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -349,10 +361,15 @@ export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }
       const response = await fetch("/api/admin/spend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: form.label, amount_inr: Number(form.amount), utm_campaign: form.campaign || undefined }),
+        body: JSON.stringify({
+          label: form.label,
+          amount_inr: Number(form.amount),
+          utm_campaign: form.campaign || undefined,
+          category: form.category,
+        }),
       });
       if (response.ok) {
-        setForm({ label: "", amount: "", campaign: "" });
+        setForm({ label: "", amount: "", campaign: "", category: "acquisition" });
         onChange();
       } else {
         setError((await response.json().catch(() => null))?.message ?? "Could not save the entry.");
@@ -371,8 +388,12 @@ export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }
 
   return (
     <Panel
-      title="Spend"
-      hint={`${inr(m.totals.spend_inr)} recorded of the ${inr(CAMPAIGN.budgetInr)} budget.`}
+      title={editable ? "Measured real spend" : "Simulated spend"}
+      hint={
+        editable
+          ? `${inr(m.totals.spend_inr)} actually recorded of the ${inr(CAMPAIGN.budgetInr)} budget.`
+          : `${inr(m.totals.spend_inr)} of simulated spend, following the campaign allocation.`
+      }
     >
       {m.spend.length === 0 ? (
         <Empty>No spend recorded. Cost per registration appears once an entry is added.</Empty>
@@ -382,7 +403,10 @@ export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }
             <li key={s.id} className="flex items-center gap-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="text-ink">{s.label}</p>
-                {s.utm_campaign && <p className="font-mono text-xs text-muted">{s.utm_campaign}</p>}
+                <p className="text-xs text-muted">
+                  {s.category === "prize" ? "Prize" : "Acquisition"}
+                  {s.utm_campaign && <span className="font-mono"> · {s.utm_campaign}</span>}
+                </p>
               </div>
               <span className="font-semibold tabular-nums text-ink">{inr(s.amount_inr)}</span>
               {editable && (
@@ -395,7 +419,7 @@ export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }
         </ul>
       )}
       {editable ? (
-        <form onSubmit={add} className="mt-4 grid gap-2 border-t border-line pt-4 sm:grid-cols-[1.4fr_0.7fr_1fr_auto]">
+        <form onSubmit={add} className="mt-4 grid gap-2 border-t border-line pt-4 sm:grid-cols-2">
           <input
             aria-label="What the money was spent on"
             placeholder="What was it spent on?"
@@ -422,18 +446,79 @@ export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }
             value={form.campaign}
             onChange={(e) => setForm({ ...form, campaign: e.target.value })}
           />
-          <Button type="submit" variant="secondary" loading={saving}>
-            Add
+          <select
+            aria-label="Spend category"
+            className={inputClass}
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+          >
+            <option value="acquisition">Acquisition (ads)</option>
+            <option value="prize">Prize</option>
+          </select>
+          <Button type="submit" variant="secondary" loading={saving} className="sm:col-span-2">
+            Add spend entry
           </Button>
         </form>
       ) : (
-        <p className="mt-3 text-xs text-muted">Simulated spend. Switch to Real data to record actual spend.</p>
+        <p className="mt-3 text-xs text-muted">
+          Simulated: no money was spent and no paid registrations were bought. Switch to Real data to record actual
+          spend.
+        </p>
       )}
       {error && (
         <p role="alert" className="mt-2 text-sm text-accent-dark">
           {error}
         </p>
       )}
+    </Panel>
+  );
+}
+
+// The ₹2,000 allocation from the campaign plan. This is a plan, shown in both
+// datasets and labelled as such; recorded spend lives in the Spend panel.
+export function BudgetPanel({ m }: { m: Metrics }) {
+  const isDemo = m.dataset === "demo";
+  const swatch = (i: number) => (i === 0 ? "bg-series" : i === 1 ? "bg-ink" : "bg-ink/50");
+  return (
+    <Panel
+      title="Budget allocation"
+      hint={`Simulated campaign allocation of the ${inr(CAMPAIGN.budgetInr)} budget. A plan, not recorded spend.`}
+    >
+      <div className="flex h-3 overflow-hidden rounded-full" aria-hidden>
+        {BUDGET_PLAN.map((item, i) => (
+          <span
+            key={item.id}
+            className={cx("h-full border-r-2 border-card last:border-r-0", swatch(i))}
+            style={{ width: `${(item.amountInr / CAMPAIGN.budgetInr) * 100}%` }}
+          />
+        ))}
+      </div>
+      <ul className="mt-4 divide-y divide-line text-sm">
+        {BUDGET_PLAN.map((item, i) => (
+          <li key={item.id} className="flex items-center gap-3 py-2.5">
+            <span aria-hidden className={cx("size-2.5 rounded-full", swatch(i))} />
+            <span className="flex-1 text-ink">{item.label}</span>
+            <span className="text-muted">{pct(item.amountInr / CAMPAIGN.budgetInr, 0)}</span>
+            <span className="w-16 text-right font-semibold tabular-nums text-ink">{inr(item.amountInr)}</span>
+          </li>
+        ))}
+        <li className="flex items-center gap-3 py-2.5 font-semibold text-ink">
+          <span className="flex-1 pl-[22px]">Total budget</span>
+          <span className="w-16 text-right tabular-nums">{inr(CAMPAIGN.budgetInr)}</span>
+        </li>
+      </ul>
+      <dl className="mt-3 grid grid-cols-2 gap-4 border-t border-line pt-4 text-sm">
+        <div>
+          <dt className="text-muted">Acquisition cost per registration</dt>
+          <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-ink">{inr2(m.acquisitionCostPerRegistration)}</dd>
+          <dd className="text-xs text-muted">{isDemo ? "Simulated ad budget" : "Recorded acquisition spend"} ÷ all registrations</dd>
+        </div>
+        <div>
+          <dt className="text-muted">Total cost per registration</dt>
+          <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-ink">{inr2(m.costPerRegistration)}</dd>
+          <dd className="text-xs text-muted">{isDemo ? "Simulated spend" : "Recorded spend"} incl. prizes ÷ registrations</dd>
+        </div>
+      </dl>
     </Panel>
   );
 }

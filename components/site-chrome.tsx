@@ -39,7 +39,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <Link href="/#generator" className={buttonClass("dark", "sm")}>
-            Generate Project
+            Build My Project
           </Link>
         </nav>
 
@@ -65,7 +65,7 @@ export function SiteHeader() {
               </Link>
             ))}
             <Link href="/#generator" className={buttonClass("primary", "md", "mt-1 w-full")}>
-              Generate Project <ArrowIcon />
+              Build My Project <ArrowIcon />
             </Link>
           </nav>
         </details>

@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Campus Builders" };
 export const dynamic = "force-dynamic";
 
 type Leaderboard = {
+  entries: { first_name: string; college: string; title: string; referrals: number }[];
   referrers: { first_name: string; college: string; referrals: number }[];
   colleges: { college: string; registrations: number }[];
 };
@@ -50,10 +51,44 @@ export default async function LeaderboardPage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-12">
         <div className="animate-rise text-center">
-          <Eyebrow>Community challenge</Eyebrow>
+          <Eyebrow>Build. Refer. Compete.</Eyebrow>
           <h1 className="text-display mt-3">Campus Builders</h1>
-          <p className="mt-4 text-lg text-body">Students turning ideas into projects.</p>
+          <p className="mt-4 text-lg text-body">Students turning ideas into projects, and entering them to compete.</p>
         </div>
+
+        <section aria-labelledby="entries" className="mt-12">
+          <h2 id="entries" className="text-h3">
+            Competition entries
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Projects submitted by students who unlocked their entry with a verified referral. Listed by verified
+            referrals; judging is outside this prototype.
+          </p>
+          {board.entries.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center">
+              <p className="font-display text-lg font-semibold text-ink">No projects submitted yet.</p>
+              <p className="mt-1 text-sm text-body">Refer one friend to unlock your entry and be the first.</p>
+            </div>
+          ) : (
+            <ol className="mt-4 grid gap-2.5 md:grid-cols-2">
+              {board.entries.map((e, i) => (
+                <li key={i} className="flex items-center gap-4 rounded-2xl border border-line bg-card p-4 shadow-card">
+                  <Rank n={i + 1} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-ink">{e.title}</p>
+                    <p className="truncate text-sm text-muted">
+                      {e.first_name} · {e.college}
+                    </p>
+                  </div>
+                  <p className="text-right">
+                    <span className="block font-display text-xl font-bold tabular-nums text-ink">{e.referrals}</span>
+                    <span className="block text-xs text-muted">{e.referrals === 1 ? "referral" : "referrals"}</span>
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
 
         <div className="mt-12 grid items-start gap-6 md:grid-cols-2">
           <section aria-labelledby="builders">
@@ -125,9 +160,9 @@ export default async function LeaderboardPage() {
 
         <div className="mt-14 rounded-3xl bg-ink p-8 text-center text-white sm:p-10">
           <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">Add your name to the board.</h2>
-          <p className="mt-2 text-white/70">Generate your project, share your card, and bring your classmates along.</p>
+          <p className="mt-2 text-white/70">Build your project, refer one friend, and submit your entry.</p>
           <Link href="/#generator" className={buttonClass("primary", "lg", "mt-6")}>
-            Generate My AI Project <ArrowIcon />
+            Build My Project <ArrowIcon />
           </Link>
         </div>
 

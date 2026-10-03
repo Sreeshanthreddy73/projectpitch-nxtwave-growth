@@ -7,12 +7,13 @@ import { num } from "@/lib/format";
 import type { Metrics } from "@/lib/metrics";
 import type { InsightRow } from "@/lib/types";
 import { Badge, Button, Card, Spinner, cx } from "../ui";
-import { DailyChart } from "./daily-chart";
+import { CumulativeChart, DailyChart } from "./daily-chart";
 import { Headline } from "./headline";
 import { InsightsPanel } from "./insights-panel";
 import {
   AbPanel,
   Assumptions,
+  BudgetPanel,
   CampaignTable,
   Distribution,
   Funnel,
@@ -84,7 +85,7 @@ export function Dashboard() {
         setNotice(data?.message ?? "The demo data request failed.");
       } else if (action === "load") {
         setNotice(
-          `Loaded a simulated campaign: ${num(data.loaded.registrations)} registrations and ${num(data.loaded.events)} events.`,
+          `Loaded the campaign simulation: ${num(data.loaded.registrations)} simulated registrations, ${num(data.loaded.submissions)} simulated submissions.`,
         );
         if (dataset === "demo") await load("demo");
         else switchTo("demo");
@@ -142,10 +143,11 @@ export function Dashboard() {
         <div className="rounded-2xl border-2 border-warn/40 bg-warn-soft p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold tracking-wide text-warn">DEMO DATA — SIMULATION</p>
+              <p className="text-sm font-bold tracking-wide text-warn">DEMO DATA — CAMPAIGN SIMULATION</p>
               <p className="mt-1 max-w-3xl text-sm text-ink">
-                Every number on this page is simulated to demonstrate the dashboard: invented students, fictional
-                colleges, five days of a seven-day campaign. None of it is a real registration.
+                A simulated run of the 7-day campaign, built from the plan&apos;s assumptions to show how it could reach{" "}
+                {CAMPAIGN.targetRegistrations} registrations. Invented students, fictional colleges. None of these are
+                real registrations or real results.
               </p>
             </div>
             <div className="flex gap-2">
@@ -228,7 +230,7 @@ function DashboardBody({ data, reload }: { data: Payload; reload: () => void }) 
           <h2 className="text-h3">{isDemo ? "No demo data loaded" : "No real activity yet"}</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-body">
             {isDemo
-              ? "Click Load Demo Data above to fill this view with a simulated five-day campaign."
+              ? "Click Load Demo Data above to fill this view with the 7-day campaign simulation."
               : "Numbers appear here as soon as someone visits the landing page. Try opening it with a tracked link:"}
           </p>
           {!isDemo && (
@@ -247,10 +249,17 @@ function DashboardBody({ data, reload }: { data: Payload; reload: () => void }) 
       <Headline m={m} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Funnel m={m} />
-        <Panel title="Registrations per day" hint="Dates are in India time. Day 1 is the first day with tracked activity.">
-          <DailyChart daily={m.daily} />
+        <Panel
+          title="Cumulative registrations"
+          hint={
+            isDemo
+              ? "SIMULATED trajectory against the straight-line path to the target."
+              : "Running total against the straight-line path to the target."
+          }
+        >
+          <CumulativeChart daily={m.daily} />
         </Panel>
+        <Funnel m={m} />
       </div>
 
       <InsightsPanel
@@ -262,6 +271,13 @@ function DashboardBody({ data, reload }: { data: Payload; reload: () => void }) 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SourceTable m={m} />
         <AbPanel m={m} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Panel title="Registrations per day" hint="Dates are in India time. Day 1 is the first day with tracked activity.">
+          <DailyChart daily={m.daily} />
+        </Panel>
+        <BudgetPanel m={m} />
       </div>
 
       <CampaignTable m={m} />

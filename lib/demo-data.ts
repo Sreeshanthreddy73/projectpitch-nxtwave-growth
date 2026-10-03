@@ -1,43 +1,86 @@
 import "server-only";
+import { BUDGET_PLAN } from "./config";
 import { BRANCHES } from "./options";
 
-// Simulated campaign for demonstrations: five days into a seven-day campaign.
-// Every row is written with is_demo = true and is only ever shown in the
-// dashboard's Demo view under a "DEMO DATA — SIMULATION" banner.
+// CAMPAIGN SIMULATION
+//
+// A simulated run of the full 7-day "Build. Refer. Compete." campaign that
+// ends on the 500-registration target. It shows how the plan COULD reach 500;
+// it is not a result. Every row is written with is_demo = true and is only
+// shown in the dashboard's Demo view under "DEMO DATA — CAMPAIGN SIMULATION".
 //
 // People are invented: names are random first-name/initial pairs, colleges are
-// fictional, and emails use the reserved example.com domain.
+// fictional, emails use the reserved example.com domain.
 //
-// The numbers come from the channel assumptions below plus a seeded random
-// generator, so each load produces the same shape of campaign.
+// The simulation is built from the assumptions below, not sampled until it
+// happens to hit a number: registrations per day and per channel are fixed by
+// the plan, and the funnel around them is derived from assumed rates.
 
-const DAYS = 5;
 const DAY_MS = 86_400_000;
 const IST_OFFSET_MS = 5.5 * 3_600_000;
 
-// [source, medium, campaign, visitors over 5 days, visit→generate, generate→register]
-const CHANNELS: [string | null, string | null, string | null, number, number, number][] = [
-  ["whatsapp", "group", "cse_group_a", 230, 0.62, 0.52],
-  ["whatsapp", "group", "ece_group_b", 165, 0.55, 0.44],
-  ["whatsapp", "group", "placement_cell", 145, 0.58, 0.5],
-  ["instagram", "paid", "reel_resume_hook", 430, 0.34, 0.22],
-  ["instagram", "story", "story_countdown", 130, 0.3, 0.2],
-  ["linkedin", "post", "final_year_post", 170, 0.48, 0.38],
-  [null, null, null, 100, 0.4, 0.3],
-];
-const DAY_WEIGHTS = [0.14, 0.18, 0.2, 0.23, 0.25];
+// Assumed registrations per day. Cumulative: 40, 95, 160, 235, 320, 410, 500.
+export const DAILY_REGISTRATIONS = [40, 55, 65, 75, 85, 90, 90];
 
-// Variant A (resume hook) is simulated to convert better than B (build hook).
-const VARIANT_LIFT = { a: 1.15, b: 0.85 };
-const SHARE_RATE = 0.3;
-const REFERRAL_VISIT_TO_GENERATE = 0.6;
-const REFERRAL_GENERATE_TO_REGISTER = 0.42;
+// Assumed channels: registrations per day, and funnel rates used to derive how
+// many visitors and blueprint generations sit behind those registrations.
+const CHANNELS = [
+  {
+    id: "paid",
+    source: "instagram",
+    medium: "paid",
+    campaign: "ig_ads_final_year",
+    perDay: [5, 5, 4, 4, 3, 2, 2], // 25: what ₹500 of ads is assumed to buy
+    visitToGenerate: 0.45,
+    generateToRegister: 0.28,
+  },
+  {
+    id: "whatsapp",
+    source: "whatsapp",
+    medium: "community",
+    campaign: "student_groups",
+    perDay: [18, 21, 22, 23, 28, 30, 28], // 170
+    visitToGenerate: 0.6,
+    generateToRegister: 0.5,
+  },
+  {
+    id: "clubs",
+    source: "clubs",
+    medium: "community",
+    campaign: "coding_clubs",
+    perDay: [10, 13, 14, 15, 15, 14, 14], // 95
+    visitToGenerate: 0.62,
+    generateToRegister: 0.52,
+  },
+  {
+    id: "organic",
+    source: null,
+    medium: null,
+    campaign: null,
+    perDay: [3, 4, 5, 6, 7, 7, 8], // 40
+    visitToGenerate: 0.5,
+    generateToRegister: 0.4,
+  },
+  {
+    id: "referral",
+    source: "referral",
+    medium: null,
+    campaign: null,
+    perDay: [4, 12, 20, 27, 32, 37, 38], // 170: the referral gate at work
+    visitToGenerate: 0.7,
+    generateToRegister: 0.55,
+  },
+] as const;
 
-const SPEND = [
-  { label: "Instagram reel boost", utm_campaign: "reel_resume_hook", amount_inr: 800 },
-  { label: "Poster and creative templates", utm_campaign: null, amount_inr: 300 },
-  { label: "Top-referrer prize pool (prototype)", utm_campaign: null, amount_inr: 500 },
-];
+// Of students who unlock their entry, the share assumed to submit a project.
+const SUBMIT_RATE = 0.6;
+// Registrants who share their link but whose friend never registers.
+const UNSUCCESSFUL_SHARE_RATE = 0.12;
+// Share of referrals that go to someone who has already referred a friend.
+const REPEAT_REFERRER_RATE = 0.18;
+// Simulated A/B split of registrations (B = competition-first). Kept close so
+// the demo does not manufacture a winner.
+const VARIANT_B_SHARE = 0.52;
 
 const FIRST_NAMES = [
   "Aarav", "Ananya", "Bhavya", "Charan", "Divya", "Eshwar", "Farhan", "Gayathri", "Harsha", "Ishita",
@@ -67,19 +110,19 @@ function seeded(seed: number) {
   };
 }
 
-type EventRow = {
+type Attribution = { utm_source: string | null; utm_medium: string | null; utm_campaign: string | null };
+
+type EventRow = Attribution & {
   session_id: string;
   type: string;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
   ref_code: string | null;
   variant: string;
   is_demo: true;
   created_at: string;
 };
 
-type RegistrationRow = {
+type RegistrationRow = Attribution & {
+  id: string;
   name: string;
   email: string;
   college: string;
@@ -87,17 +130,23 @@ type RegistrationRow = {
   year: string;
   ref_code: string;
   referred_by: string | null;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
   variant: string;
   consent_at: string;
   is_demo: true;
   created_at: string;
 };
 
+type SubmissionRow = {
+  registration_id: string;
+  project_url: string;
+  summary: string;
+  is_demo: true;
+  created_at: string;
+  updated_at: string;
+};
+
 export function buildDemoData(now = Date.now()) {
-  const rand = seeded(20261003);
+  const rand = seeded(20261004);
   const pick = <T,>(items: readonly T[], weights?: number[]): T => {
     if (!weights) return items[Math.floor(rand() * items.length)];
     let r = rand();
@@ -109,103 +158,142 @@ export function buildDemoData(now = Date.now()) {
   };
   const hex = (n: number) => Array.from({ length: n }, () => Math.floor(rand() * 16).toString(16)).join("");
   const uuid = () => `${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}`;
+  const iso = (ms: number) => new Date(ms).toISOString();
+
+  // The simulated campaign ran over the seven full days before today (IST).
+  const todayStart = Math.floor((now + IST_OFFSET_MS) / DAY_MS) * DAY_MS - IST_OFFSET_MS;
+  const start = todayStart - DAILY_REGISTRATIONS.length * DAY_MS;
+  const end = todayStart - 60_000;
+  // A moment on campaign day `day`, between 08:00 and 23:00.
+  const moment = (day: number, from = 8, to = 23) => start + day * DAY_MS + (from + rand() * (to - from)) * 3_600_000;
 
   const events: EventRow[] = [];
-  const registrations: RegistrationRow[] = [];
-  // The campaign started at midnight IST four days ago, so today is day 5.
-  const todayStart = Math.floor((now + IST_OFFSET_MS) / DAY_MS) * DAY_MS - IST_OFFSET_MS;
-  const start = todayStart - (DAYS - 1) * DAY_MS;
-  const todayFraction = (now - todayStart) / DAY_MS;
+  const registrations: (RegistrationRow & { at: number; session: string })[] = [];
+  const submissions: SubmissionRow[] = [];
+  const referralCount = new Map<string, number>();
 
-  // Runs one visitor through the funnel. A registrant who shares produces
-  // referred visitors, who go through the same function one level deeper.
-  function visitor(
-    at: number,
-    channel: { source: string | null; medium: string | null; campaign: string | null },
-    generateRate: number,
-    registerRate: number,
-    referrer: string | null,
-    depth: number,
-  ) {
-    if (at > now) return;
-    const variant = rand() < 0.5 ? "a" : "b";
-    const base = {
-      session_id: uuid(),
-      utm_source: channel.source,
-      utm_medium: channel.medium,
-      utm_campaign: channel.campaign,
-      ref_code: referrer,
-      variant,
-      is_demo: true as const,
-    };
-    const event = (type: string, time: number) =>
-      events.push({ ...base, type, created_at: new Date(Math.min(time, now)).toISOString() });
+  const event = (session: string, type: string, at: number, a: Attribution, variant: string, ref: string | null) =>
+    events.push({ session_id: session, type, ...a, ref_code: ref, variant, is_demo: true, created_at: iso(Math.min(at, end)) });
 
-    if (referrer) event("card_view", at);
-    event("visit", at + 20_000);
-    if (rand() > generateRate) return;
-    event("generate", at + 80_000);
-    if (rand() > registerRate * VARIANT_LIFT[variant]) return;
+  for (let day = 0; day < DAILY_REGISTRATIONS.length; day++) {
+    for (const channel of CHANNELS) {
+      const registered = channel.perDay[day];
+      const attribution: Attribution = { utm_source: channel.source, utm_medium: channel.medium, utm_campaign: channel.campaign };
+      const isReferral = channel.id === "referral";
 
-    const registeredAt = at + 170_000;
-    if (registeredAt > now) return;
-    const n = registrations.length + 1;
-    const code = `DEMO${String(n).padStart(4, "0")}`;
-    registrations.push({
-      name: `${pick(FIRST_NAMES)} ${String.fromCharCode(65 + Math.floor(rand() * 26))}.`,
-      email: `demo.student${n}@example.com`,
-      college: pick(COLLEGES, COLLEGE_WEIGHTS),
-      branch: pick(BRANCHES, BRANCH_WEIGHTS),
-      year: rand() < 0.85 ? "Final year" : "3rd year",
-      ref_code: code,
-      referred_by: referrer,
-      utm_source: channel.source,
-      utm_medium: channel.medium,
-      utm_campaign: channel.campaign,
-      variant,
-      consent_at: new Date(registeredAt).toISOString(),
-      is_demo: true,
-      created_at: new Date(registeredAt).toISOString(),
-    });
-    event("register", registeredAt);
+      // Visitors and generators implied by the assumed funnel rates.
+      const generators = Math.round(registered / channel.generateToRegister);
+      const visitors = Math.round(generators / channel.visitToGenerate);
 
-    if (depth >= 3 || rand() > SHARE_RATE) return;
-    event("share_click", registeredAt + 60_000);
-    const friends = 1 + Math.floor(rand() * 5);
-    for (let i = 0; i < friends; i++) {
-      const delay = (0.5 + rand() * 20) * 3_600_000;
-      visitor(
-        registeredAt + delay,
-        { source: "referral", medium: null, campaign: null },
-        REFERRAL_VISIT_TO_GENERATE,
-        REFERRAL_GENERATE_TO_REGISTER,
-        code,
-        depth + 1,
-      );
-    }
-  }
+      for (let i = 0; i < visitors; i++) {
+        const converts = i < registered;
+        const generates = i < generators;
+        // Referral traffic arrives later in the day, after earlier registrants have shared.
+        let at = isReferral ? moment(day, 10, 23) : moment(day);
+        const session = uuid();
+        const variant = converts ? (rand() < VARIANT_B_SHARE ? "b" : "a") : rand() < 0.5 ? "b" : "a";
 
-  for (const [source, medium, campaign, visitors, generateRate, registerRate] of CHANNELS) {
-    for (let day = 0; day < DAYS; day++) {
-      const isToday = day === DAYS - 1;
-      // Today is only partly over, so it gets a proportional share of its traffic.
-      const count = Math.round(visitors * DAY_WEIGHTS[day] * (isToday ? Math.min(1, todayFraction * 1.2) : 1));
-      for (let i = 0; i < count; i++) {
-        // Past days: activity between 07:00 and 23:00. Today: any time up to now.
-        const offset = isToday ? rand() * todayFraction : (7 + rand() * 16) / 24;
-        visitor(start + (day + offset) * DAY_MS, { source, medium, campaign }, generateRate, registerRate, null, 0);
+        // A referred visitor arrives through an earlier registrant's link.
+        let referrer: string | null = null;
+        if (isReferral) {
+          let earlier = registrations.filter((r) => r.at < at);
+          if (earlier.length === 0) {
+            // Nobody had registered yet at that moment: arrive just after the first registrant instead.
+            earlier = [registrations.reduce((first, r) => (r.at < first.at ? r : first))];
+            at = earlier[0].at + 600_000;
+          }
+          const repeat = earlier.filter((r) => referralCount.has(r.ref_code));
+          referrer = (converts && repeat.length > 0 && rand() < REPEAT_REFERRER_RATE ? pick(repeat) : pick(earlier)).ref_code;
+          event(session, "card_view", at - 20_000, attribution, variant, referrer);
+        }
+
+        event(session, "visit", at, attribution, variant, referrer);
+        if (!generates) continue;
+        event(session, "generate", at + 60_000, attribution, variant, referrer);
+        if (!converts) continue;
+
+        const registeredAt = at + 150_000;
+        const n = registrations.length + 1;
+        const code = `DEMO${String(n).padStart(4, "0")}`;
+        registrations.push({
+          id: uuid(),
+          name: `${pick(FIRST_NAMES)} ${String.fromCharCode(65 + Math.floor(rand() * 26))}.`,
+          email: `demo.student${n}@example.com`,
+          college: pick(COLLEGES, COLLEGE_WEIGHTS),
+          branch: pick(BRANCHES, BRANCH_WEIGHTS),
+          year: rand() < 0.9 ? "Final year" : "3rd year",
+          ref_code: code,
+          referred_by: referrer,
+          ...attribution,
+          variant,
+          consent_at: iso(registeredAt),
+          is_demo: true,
+          created_at: iso(registeredAt),
+          at: registeredAt,
+          session,
+        });
+        event(session, "register", registeredAt, attribution, variant, referrer);
+
+        // The referral is verified at the moment the friend registers. The
+        // referrer's first verified referral unlocks their competition entry.
+        if (referrer) {
+          const count = (referralCount.get(referrer) ?? 0) + 1;
+          referralCount.set(referrer, count);
+          event(session, "referral_verified", registeredAt, attribution, variant, referrer);
+          if (count === 1) event(session, "competition_unlocked", registeredAt, attribution, variant, referrer);
+        }
       }
     }
   }
 
-  // Referrers must be inserted before the people they referred.
-  registrations.sort((x, y) => x.created_at.localeCompare(y.created_at));
+  // Sharing and submissions, now that every referral is known.
+  for (const r of registrations) {
+    const attribution: Attribution = { utm_source: r.utm_source, utm_medium: r.utm_medium, utm_campaign: r.utm_campaign };
+    const referred = registrations.filter((f) => f.referred_by === r.ref_code);
+    const shared = referred.length > 0 || rand() < UNSUCCESSFUL_SHARE_RATE;
+    if (shared) {
+      const sharedAt = referred.length > 0 ? Math.min(...referred.map((f) => f.at)) - 900_000 : r.at + 120_000;
+      event(r.session, "share_click", Math.max(sharedAt, r.at + 60_000), attribution, r.variant, r.referred_by);
+    }
+    if (referred.length > 0 && rand() < SUBMIT_RATE) {
+      const unlockedAt = Math.min(...referred.map((f) => f.at));
+      const submittedAt = unlockedAt + (2 + rand() * 30) * 3_600_000;
+      if (submittedAt > end) continue; // unlocked too late to submit before the campaign closed
+      submissions.push({
+        registration_id: r.id,
+        project_url: `https://example.com/demo-projects/${r.ref_code.toLowerCase()}`,
+        summary: "Simulated competition entry.",
+        is_demo: true,
+        created_at: iso(submittedAt),
+        updated_at: iso(submittedAt),
+      });
+      event(r.session, "project_submission", submittedAt, attribution, r.variant, r.ref_code);
+    }
+  }
 
-  const spend = SPEND.map((s, i) => ({
-    ...s,
+  // Referrers must be inserted before the people they referred.
+  registrations.sort((x, y) => x.at - y.at);
+
+  // The budget plan, recorded as simulated spend. The ad budget is tied to the
+  // paid campaign so its cost per registration can be shown.
+  const spend = BUDGET_PLAN.map((item, i) => ({
+    label: `${item.label} (simulated)`,
+    utm_campaign: item.id === "ads" ? "ig_ads_final_year" : null,
+    amount_inr: item.amountInr,
+    category: item.category,
     is_demo: true as const,
-    created_at: new Date(start + i * 3_600_000).toISOString(),
+    created_at: iso(start + i * 3_600_000),
   }));
 
-  return { registrations, events, spend };
+  return {
+    registrations: registrations.map((r) => {
+      const row: Partial<typeof r> = { ...r };
+      delete row.at;
+      delete row.session;
+      return row as RegistrationRow;
+    }),
+    events,
+    submissions,
+    spend,
+  };
 }

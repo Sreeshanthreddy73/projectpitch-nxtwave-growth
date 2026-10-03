@@ -1,21 +1,26 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BlueprintMeta, BuildTimeline, StackList } from "@/components/blueprint-view";
+import { ProgressTracker } from "@/components/competition";
 import { ReferralProgress } from "@/components/referral-progress";
 import { CopyText, SharePanel } from "@/components/share-panel";
 import { LoadFailure, SiteFooter, SiteHeader } from "@/components/site-chrome";
-import { Badge, Card, CheckIcon, Eyebrow, LockIcon, SparkIcon, cx } from "@/components/ui";
+import { SubmitForm } from "@/components/submit-form";
+import { ArrowIcon, Badge, Card, CheckIcon, Eyebrow, LockIcon, SparkIcon, buttonClass, cx } from "@/components/ui";
 import { ADVANCED_PROJECTS, STARTER_PROMPTS } from "@/content/packs";
 import { splitProblem } from "@/lib/blueprint-text";
-import { CAMPAIGN } from "@/lib/config";
+import { getSubmission, isEligible, trackerSteps } from "@/lib/competition";
+import { CAMPAIGN, PRIZES, SIMULATION_NOTE } from "@/lib/config";
 import { db, unwrap } from "@/lib/db";
+import { inr } from "@/lib/format";
 import { countReferrals } from "@/lib/referrals";
 import { REWARD_TIERS, unlockedTiers } from "@/lib/rewards";
 import { cleanRef } from "@/lib/tracking-shared";
 import type { Blueprint } from "@/lib/types";
 
-// The hub is the student's personal project workspace. The link acts as their
-// private key to the blueprint.
+// The hub is the student's personal project workspace and their competition
+// status. The link acts as their private key to the blueprint.
 export const metadata: Metadata = { title: "Your project", robots: { index: false, follow: false } };
 
 async function loadHub(code: string) {
@@ -23,15 +28,17 @@ async function loadHub(code: string) {
     await db().from("registrations").select("id, name, ref_code").eq("ref_code", code).eq("is_demo", false).maybeSingle(),
   );
   if (!registration) return null;
-  const [blueprint, referrals] = await Promise.all([
+  const [blueprint, referrals, submission] = await Promise.all([
     db()
       .from("blueprints")
       .select("title, problem, stack, difficulty, build_plan, resume_bullet")
       .eq("registration_id", registration.id)
       .maybeSingle(),
+    // Verified referrals: friends who completed registration with this code.
     countReferrals(code),
+    getSubmission(registration.id),
   ]);
-  return { registration, blueprint: unwrap(blueprint) as Blueprint | null, referrals };
+  return { registration, blueprint: unwrap(blueprint) as Blueprint | null, referrals, submission };
 }
 
 export default async function HubPage({ params }: { params: Promise<{ code: string }> }) {
@@ -52,10 +59,18 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
   }
   if (!hub || !hub.blueprint) notFound();
 
-  const { registration, blueprint, referrals } = hub;
+  const { registration, blueprint, referrals, submission } = hub;
   const firstName = registration.name.trim().split(/\s+/)[0];
   const unlocked = unlockedTiers(referrals);
+  const eligible = isEligible(referrals);
+  const steps = trackerSteps(referrals, Boolean(submission));
   const { oneLiner, why } = splitProblem(blueprint.problem);
+
+  const status = submission
+    ? "Your project is in the competition."
+    : eligible
+      ? "Your competition entry is unlocked. Submit your project."
+      : "Refer 1 friend to unlock your competition entry.";
 
   return (
     <>
@@ -66,19 +81,50 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
             <Badge tone="good">
               <CheckIcon className="size-3.5" /> Registered
             </Badge>
+            {eligible ? (
+              <Badge tone="good">
+                <CheckIcon className="size-3.5" /> Competition entry unlocked
+              </Badge>
+            ) : (
+              <Badge>
+                <LockIcon className="size-3" /> Competition entry locked
+              </Badge>
+            )}
             {unlocked.includes("builder") && <Badge tone="accent">Campus Builder</Badge>}
           </div>
           <h1 className="text-h1 mt-4">Your project is ready, {firstName}.</h1>
-          <p className="mt-3 max-w-2xl text-lg text-body">
+          <p className="mt-3 max-w-2xl text-lg font-medium text-ink">{status}</p>
+          <p className="mt-1 max-w-2xl text-body">
             You&apos;re registered for &ldquo;{CAMPAIGN.workshopTitle}&rdquo;. This page is your private workspace, so
             bookmark it.
           </p>
-          <p className="mt-1 text-sm text-muted">This is a prototype, so no live session is scheduled.</p>
         </div>
 
         <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.35fr_1fr]">
-          {/* Left: the project */}
+          {/* Left: the project and, once unlocked, the submission */}
           <div className="space-y-6">
+            {eligible && (
+              <Card id="submit" className="animate-rise border-accent/30 p-6 sm:p-8">
+                <div className="flex items-center justify-between gap-3">
+                  <Eyebrow className="text-accent-dark">Project submission</Eyebrow>
+                  <Badge tone="good">
+                    <CheckIcon className="size-3" /> Unlocked
+                  </Badge>
+                </div>
+                {!submission && (
+                  <>
+                    <h2 className="text-h2 mt-3">Submit your project.</h2>
+                    <p className="mt-2 text-body">
+                      Share a link to what you built: a GitHub repo, a deployed demo or a short video.
+                    </p>
+                  </>
+                )}
+                <div className="mt-5">
+                  <SubmitForm code={registration.ref_code} existing={submission} />
+                </div>
+              </Card>
+            )}
+
             <Card className="animate-rise p-6 sm:p-8">
               <Eyebrow className="text-accent-dark">Your AI project</Eyebrow>
               <h2 className="text-h1 mt-3">{blueprint.title}</h2>
@@ -128,14 +174,45 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
             </div>
           </div>
 
-          {/* Right: share and referrals */}
+          {/* Right: competition status, sharing and referrals */}
           <div className="space-y-6 lg:sticky lg:top-24">
-            <div className="rounded-2xl bg-ink p-6 text-white shadow-lift sm:p-7">
-              <p className="eyebrow text-white/50">Share your project</p>
+            <Card className="p-6 sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <Eyebrow>Your competition entry</Eyebrow>
+                <span className="font-mono text-xs text-muted">
+                  🥇 {inr(PRIZES.first)} · 🥈 {inr(PRIZES.second)}
+                </span>
+              </div>
+              <div className="mt-4">
+                <ProgressTracker steps={steps} />
+              </div>
+              <div className="mt-5">
+                {submission ? (
+                  <Link href="/leaderboard" className={buttonClass("secondary", "lg", "w-full")}>
+                    See the competition <ArrowIcon />
+                  </Link>
+                ) : eligible ? (
+                  <a href="#submit" className={buttonClass("primary", "lg", "w-full")}>
+                    Submit Project <ArrowIcon />
+                  </a>
+                ) : (
+                  <a href="#share" className={buttonClass("primary", "lg", "w-full")}>
+                    Invite a Friend <ArrowIcon />
+                  </a>
+                )}
+              </div>
+              <p className="mt-3 text-xs text-muted">{SIMULATION_NOTE}</p>
+            </Card>
+
+            <div id="share" className="rounded-2xl bg-ink p-6 text-white shadow-lift sm:p-7">
+              <p className="eyebrow text-white/50">Invite a friend</p>
               <p className="mt-3 font-display text-2xl font-bold leading-tight tracking-tight">
-                Your project card is shareable.
+                {eligible ? "Keep sharing your project." : "One friend unlocks your entry."}
               </p>
-              <p className="mt-2 text-[15px] text-white/70">Friends can generate their own project from it.</p>
+              <p className="mt-2 text-[15px] text-white/70">
+                Send your link. It counts when your friend builds their own project and registers. A click alone
+                doesn&apos;t count.
+              </p>
               <div className="mt-5">
                 <SharePanel code={registration.ref_code} title={blueprint.title} />
               </div>
@@ -144,7 +221,7 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
             <Card className="p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
                 <Eyebrow>Your referrals</Eyebrow>
-                <Badge>Prototype rewards</Badge>
+                <Badge>Verified only</Badge>
               </div>
               <div className="mt-4">
                 <ReferralProgress code={registration.ref_code} initial={referrals} />
@@ -163,7 +240,7 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                       <span
                         className={cx(
                           "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full",
-                          open ? "animate-pop bg-good text-white" : "bg-line text-muted",
+                          open ? "bg-good text-white" : "bg-line text-muted",
                         )}
                       >
                         {open ? <CheckIcon className="size-3.5" /> : <LockIcon className="size-3" />}
@@ -183,7 +260,7 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                 })}
               </ul>
               <p className="mt-4 text-xs text-muted">
-                These rewards are features of this prototype. They are not offered or endorsed by NxtWave.
+                Bonus packs and badges are features of this prototype. They are not offered or endorsed by NxtWave.
               </p>
             </Card>
           </div>

@@ -18,6 +18,10 @@ type Raw = {
     sharers: number;
     card_views: number;
     referral_registrations: number;
+    eligible: number;
+    submissions: number;
+    spend_acquisition_inr: number;
+    spend_prize_inr: number;
     spend_inr: number;
     blueprints_ai: number;
     blueprints_fallback: number;
@@ -31,7 +35,14 @@ type Raw = {
   top_referrers: { name: string; college: string; ref_code: string; referrals: number }[];
   colleges: { college: string; registrations: number }[];
   branches: { branch: string; registrations: number }[];
-  spend: { id: string; label: string; utm_campaign: string | null; amount_inr: number; created_at: string }[];
+  spend: {
+    id: string;
+    label: string;
+    utm_campaign: string | null;
+    amount_inr: number;
+    category: "acquisition" | "prize";
+    created_at: string;
+  }[];
 };
 
 const ratio = (num: number, den: number): number | null => (den > 0 ? num / den : null);
@@ -58,15 +69,23 @@ export async function getMetrics(isDemo: boolean) {
   const perDay = started ? t.registrations / elapsed : null;
 
   const byDay = new Map(raw.daily.map((d) => [dayNumber(d.day), d]));
-  const span = Math.min(Math.max(CAMPAIGN.durationDays, day), 21);
+  // Show the campaign window, extended only if activity continued past it.
+  const lastActive = started ? dayNumber(raw.daily[raw.daily.length - 1].day) - start + 1 : 0;
+  const span = Math.min(Math.max(CAMPAIGN.durationDays, lastActive), 21);
+  let runningTotal = 0;
   const daily = Array.from({ length: span }, (_, i) => {
     const n = start + i;
     const future = n > today;
+    const registrations = future ? null : (byDay.get(n)?.registrations ?? 0);
+    runningTotal += registrations ?? 0;
     return {
       day: isoFromDayNumber(n),
       label: `Day ${i + 1}`,
       visitors: future ? null : (byDay.get(n)?.visitors ?? 0),
-      registrations: future ? null : (byDay.get(n)?.registrations ?? 0),
+      registrations,
+      cumulative: future ? null : runningTotal,
+      // straight-line path to the target, for comparison
+      targetCumulative: Math.round((CAMPAIGN.targetRegistrations * Math.min(i + 1, CAMPAIGN.durationDays)) / CAMPAIGN.durationDays),
     };
   });
 
@@ -92,6 +111,11 @@ export async function getMetrics(isDemo: boolean) {
     // Measured K: referred registrations per registrant.
     kFactor: ratio(t.referral_registrations, t.registrations),
     costPerRegistration: t.spend_inr > 0 ? ratio(t.spend_inr, t.registrations) : null,
+    // Acquisition spend only (ads), excluding prizes.
+    acquisitionCostPerRegistration: t.spend_acquisition_inr > 0 ? ratio(t.spend_acquisition_inr, t.registrations) : null,
+    // Competition: share of registrants who unlocked their entry, and of those, who submitted.
+    eligibleRate: ratio(t.eligible, t.registrations),
+    submissionRate: ratio(t.submissions, t.eligible),
     pace: {
       started,
       day,
@@ -130,6 +154,7 @@ export function toSnapshot(m: Metrics) {
       target_registrations: CAMPAIGN.targetRegistrations,
       duration_days: CAMPAIGN.durationDays,
       budget_inr: CAMPAIGN.budgetInr,
+      mechanic: "A student must refer one friend who completes registration to unlock their competition entry and submit a project.",
       day: m.pace.day,
       days_left: m.pace.daysLeft,
     },
@@ -148,7 +173,11 @@ export function toSnapshot(m: Metrics) {
       share_clicks: m.totals.shares,
       card_views: m.totals.card_views,
       referral_registrations: m.totals.referral_registrations,
+      students_with_competition_entry_unlocked: m.totals.eligible,
+      project_submissions: m.totals.submissions,
       spend_inr: m.totals.spend_inr,
+      acquisition_spend_inr: m.totals.spend_acquisition_inr,
+      prize_spend_inr: m.totals.spend_prize_inr,
     },
     rates: {
       visit_to_generate: round(m.rates.visitToGenerate),
@@ -157,6 +186,9 @@ export function toSnapshot(m: Metrics) {
       share_rate: round(m.rates.shareRate),
       measured_k_factor: round(m.kFactor),
       cost_per_registration_inr: round(m.costPerRegistration, 1),
+      acquisition_cost_per_registration_inr: round(m.acquisitionCostPerRegistration, 1),
+      entry_unlock_rate: round(m.eligibleRate),
+      submission_rate_of_unlocked: round(m.submissionRate),
     },
     pace: {
       registrations_per_day: round(m.pace.perDay, 1),
@@ -180,8 +212,8 @@ export function toSnapshot(m: Metrics) {
       cost_per_registration_inr: round(c.costPerRegistration, 1),
     })),
     ab_test: {
-      a_resume_hook: { visitors: m.ab.a.visitors, registrations: m.ab.a.registrations, visit_to_register: round(m.ab.a.visitToRegister) },
-      b_build_hook: { visitors: m.ab.b.visitors, registrations: m.ab.b.registrations, visit_to_register: round(m.ab.b.visitToRegister) },
+      a_project_first: { visitors: m.ab.a.visitors, registrations: m.ab.a.registrations, visit_to_register: round(m.ab.a.visitToRegister) },
+      b_competition_first: { visitors: m.ab.b.visitors, registrations: m.ab.b.registrations, visit_to_register: round(m.ab.b.visitToRegister) },
       verdict: m.ab.verdict.message,
       winner: m.ab.verdict.status === "winner" ? m.ab.verdict.winner : null,
     },

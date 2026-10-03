@@ -83,7 +83,14 @@ export default async function ProjectCardPage({ params }: { params: Promise<{ id
       <main className="relative overflow-hidden">
         <div aria-hidden className="bg-dots absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
         <div className="relative mx-auto w-full max-w-xl px-5 pb-24 pt-12">
-          <p className="text-center text-[15px] font-medium text-body">Someone created this AI project.</p>
+          <div className="text-center">
+            <h1 className="text-h2">{card.refCode ? "You were invited to build an AI project." : "Someone built this AI project."}</h1>
+            <p className="mt-2 text-[15px] text-body">
+              {card.refCode
+                ? "A classmate created the project below. Build your own in 60 minutes and join the competition."
+                : "Build your own in 60 minutes and join the competition."}
+            </p>
+          </div>
 
           <div className="relative mt-6">
             <div aria-hidden className="absolute -inset-5 rounded-[2.5rem] bg-ai/15 blur-3xl" />
@@ -94,9 +101,9 @@ export default async function ProjectCardPage({ params }: { params: Promise<{ id
                   <SparkIcon className="size-3" /> AI project blueprint
                 </span>
               </div>
-              <h1 className="mt-6 font-display text-[32px] font-bold leading-[1.08] tracking-tight text-white sm:text-[40px]">
+              <h2 className="mt-6 font-display text-[32px] font-bold leading-[1.08] tracking-tight text-white sm:text-[40px]">
                 {card.title}
-              </h1>
+              </h2>
               <p className="mt-4 text-[17px] leading-relaxed text-white/75">{shortProblem(card.problem)}</p>
               <div className="mt-6">
                 <BlueprintMeta difficulty={card.difficulty} onDark />
@@ -113,10 +120,11 @@ export default async function ProjectCardPage({ params }: { params: Promise<{ id
           <div className="mt-10 text-center">
             <h2 className="text-h2">What would your project be?</h2>
             <p className="mx-auto mt-2 max-w-sm text-body">
-              Answer three questions and get an AI project matched to you, with a 60-minute build roadmap.
+              Answer three questions, get an AI project matched to you, and register.
+              {card.refCode && " Your registration is what counts as your classmate's referral."}
             </p>
             <Link href={generateHref} className={buttonClass("primary", "lg", "mt-6")}>
-              Generate My Own Project <ArrowIcon />
+              Build My Project <ArrowIcon />
             </Link>
             <p className="mt-3 text-sm text-muted">No experience? Start anyway.</p>
           </div>

@@ -1,22 +1,24 @@
-// The two landing-page hooks under test. Only the hero message changes; the
-// CTA, the generator and everything after it are identical, so a difference in
-// conversion can be attributed to the hook.
+// The two landing-page messages under test. The headline, CTA, generator and
+// everything after are identical; only what the hero leads with changes, so a
+// difference in conversion can be attributed to the message.
+//
+//   A — project-first:     lead with building the project
+//   B — competition-first: lead with the competition and prize pool
 
 export type Variant = "a" | "b";
 
-export const VARIANTS: Record<Variant, { name: string; eyebrow: string; headline: string; sub: string }> = {
+export const VARIANTS: Record<Variant, { name: string; eyebrow: string; sub: string }> = {
   a: {
-    name: "Resume hook",
-    eyebrow: "For final-year engineering students",
-    headline: "Turn your idea into an AI project your resume can show.",
-    sub: "Tell us what you're interested in. ProjectPitch creates a personalized project idea, tech stack, 60-minute build roadmap and a resume-ready bullet.",
+    name: "Project-first",
+    eyebrow: "Build your first AI project",
+    sub: "Create an AI project in 60 minutes. Refer one friend to unlock your competition entry.",
   },
   b: {
-    name: "Build hook",
-    eyebrow: "Build your first AI project",
-    headline: "Turn your idea into an AI project you can actually build.",
-    sub: "Tell us what you're interested in. ProjectPitch creates a personalized project idea, tech stack and 60-minute build roadmap.",
+    name: "Competition-first",
+    eyebrow: "AI project competition · ₹1,500 prize pool",
+    sub: "Compete for the prize pool with an AI project you build in 60 minutes. Refer one friend to unlock your entry.",
   },
 };
 
-export const HERO_CTA = "Generate My AI Project";
+export const HERO_HEADLINE = ["Build.", "Refer.", "Compete."];
+export const HERO_CTA = "Build My Project";

@@ -1,9 +1,11 @@
 import { randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { REFERRALS_TO_UNLOCK } from "@/lib/config";
 import { db, DbError, unwrap } from "@/lib/db";
 import { clientIp, jsonError, readJson, routeError } from "@/lib/http";
 import { allow } from "@/lib/rate-limit";
+import { countReferrals } from "@/lib/referrals";
 import { getTracking, logEvent } from "@/lib/tracking";
 import { COOKIE, COOKIE_MAX_AGE } from "@/lib/tracking-shared";
 
@@ -102,6 +104,21 @@ export async function POST(request: Request) {
     }
 
     await logEvent("register", tracking);
+
+    // The referral only counts now, when the friend has actually registered.
+    // A click or a visit on the referral link is never enough.
+    // The registration itself is already saved, so a failure to write these
+    // analytics events must not turn into an error for the student.
+    if (referredBy) {
+      try {
+        await logEvent("referral_verified", tracking, referredBy);
+        if ((await countReferrals(referredBy)) === REFERRALS_TO_UNLOCK) {
+          await logEvent("competition_unlocked", tracking, referredBy);
+        }
+      } catch (err) {
+        console.warn("[register] could not log referral events:", err instanceof Error ? err.message : err);
+      }
+    }
 
     const response = NextResponse.json({ code });
     response.cookies.set(COOKIE.ownCode, code, {

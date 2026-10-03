@@ -3,6 +3,8 @@
 export const num = (n: number) => n.toLocaleString("en-IN");
 export const pct = (n: number | null, digits = 1) => (n === null ? "—" : `${(n * 100).toFixed(digits)}%`);
 export const inr = (n: number | null) => (n === null ? "—" : `₹${Math.round(n).toLocaleString("en-IN")}`);
+// Rupees with two decimals, for small per-registration costs.
+export const inr2 = (n: number | null) => (n === null ? "—" : `₹${n.toFixed(2)}`);
 export const decimal = (n: number | null, digits = 2) => (n === null ? "—" : n.toFixed(digits));
 
 export function dateTime(iso: string) {

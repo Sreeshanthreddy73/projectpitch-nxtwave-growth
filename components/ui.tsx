@@ -61,8 +61,8 @@ export function Spinner({ className = "size-4" }: { className?: string }) {
   );
 }
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx("rounded-2xl border border-line bg-card shadow-card", className)}>{children}</div>;
+export function Card({ className, children, id }: { className?: string; children: ReactNode; id?: string }) {
+  return <div id={id} className={cx("rounded-2xl border border-line bg-card shadow-card", className)}>{children}</div>;
 }
 
 const BADGE = {

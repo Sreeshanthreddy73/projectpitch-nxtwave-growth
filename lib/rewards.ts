@@ -1,12 +1,13 @@
-// Prototype-only referral rewards. These demonstrate the mechanic; they are
+// Referral milestones. The first verified referral unlocks the competition
+// entry (the campaign's core gate). The later tiers are prototype-only bonus
 // content inside this app, not commitments from any organisation.
 
 export const REWARD_TIERS = [
   {
     id: "starter",
     referrals: 1,
-    title: "Starter Prompt Pack",
-    blurb: "8 prompts for planning, debugging and explaining your AI project.",
+    title: "Competition entry",
+    blurb: "Unlocks project submission, plus the Starter Prompt Pack (8 prompts for your build).",
   },
   {
     id: "advanced",

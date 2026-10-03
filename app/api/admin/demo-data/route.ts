@@ -4,7 +4,8 @@ import { db, unwrap } from "@/lib/db";
 import { buildDemoData } from "@/lib/demo-data";
 import { routeError } from "@/lib/http";
 
-const TABLES = ["events", "insights", "spend_entries", "registrations"] as const;
+// submissions and blueprints also cascade from registrations; listed for clarity.
+const TABLES = ["events", "insights", "spend_entries", "submissions", "registrations"] as const;
 
 // Removes every simulated row. Real rows (is_demo = false) are never touched.
 async function clearDemoData() {
@@ -19,7 +20,8 @@ async function insertInChunks(table: string, rows: object[], size = 500) {
   }
 }
 
-// Load Demo Data: replaces any existing simulation with a fresh one.
+// Load Demo Data: replaces any existing simulation with a fresh run of the
+// 7-day campaign simulation.
 export async function POST() {
   const denied = await adminOnly();
   if (denied) return denied;
@@ -27,10 +29,16 @@ export async function POST() {
     await clearDemoData();
     const data = buildDemoData();
     await insertInChunks("registrations", data.registrations);
+    await insertInChunks("submissions", data.submissions);
     await insertInChunks("events", data.events);
     await insertInChunks("spend_entries", data.spend);
     return NextResponse.json({
-      loaded: { registrations: data.registrations.length, events: data.events.length, spend_entries: data.spend.length },
+      loaded: {
+        registrations: data.registrations.length,
+        events: data.events.length,
+        submissions: data.submissions.length,
+        spend_entries: data.spend.length,
+      },
     });
   } catch (err) {
     return routeError(err, "admin");

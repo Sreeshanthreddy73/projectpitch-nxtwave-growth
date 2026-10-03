@@ -55,7 +55,8 @@ create index if not exists blueprints_session_idx on blueprints (session_id);
 create table if not exists events (
   id            bigint generated always as identity primary key,
   session_id    uuid not null,
-  type          text not null check (type in ('visit', 'generate', 'register', 'share_click', 'card_view')),
+  type          text not null check (type in ('visit', 'generate', 'register', 'share_click', 'card_view',
+                                    'referral_verified', 'competition_unlocked', 'project_submission')),
   utm_source    text,
   utm_medium    text,
   utm_campaign  text,
@@ -86,9 +87,37 @@ create table if not exists spend_entries (
   label         text not null check (char_length(label) between 2 and 80),
   utm_campaign  text,
   amount_inr    integer not null check (amount_inr > 0 and amount_inr <= 100000),
+  category      text not null default 'acquisition' check (category in ('acquisition', 'prize')),
   is_demo       boolean not null default false,
   created_at    timestamptz not null default now()
 );
+
+-- One competition entry per student. A row can only be created once the
+-- student has at least one verified referral (enforced in /api/submit).
+create table if not exists submissions (
+  id              uuid primary key default gen_random_uuid(),
+  registration_id uuid not null unique references registrations (id) on delete cascade,
+  project_url     text not null check (project_url ~ '^https://' and char_length(project_url) <= 300),
+  summary         text not null default '' check (char_length(summary) <= 280),
+  is_demo         boolean not null default false,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+create index if not exists submissions_demo_created_idx on submissions (is_demo, created_at);
+
+-- ---------------------------------------------------------------------------
+-- Upgrades for databases created from an earlier version of this file
+-- ---------------------------------------------------------------------------
+
+alter table events drop constraint if exists events_type_check;
+alter table events add constraint events_type_check
+  check (type in ('visit', 'generate', 'register', 'share_click', 'card_view',
+                  'referral_verified', 'competition_unlocked', 'project_submission'));
+
+alter table spend_entries
+  add column if not exists category text not null default 'acquisition'
+  check (category in ('acquisition', 'prize'));
 
 -- ---------------------------------------------------------------------------
 -- Row level security
@@ -102,6 +131,7 @@ alter table blueprints    enable row level security;
 alter table events        enable row level security;
 alter table insights      enable row level security;
 alter table spend_entries enable row level security;
+alter table submissions   enable row level security;
 
 -- ---------------------------------------------------------------------------
 -- dashboard_metrics: every number on the admin dashboard, for ONE dataset
@@ -207,6 +237,11 @@ as $$
       'sharers',                (select count(distinct session_id) from ev where type = 'share_click'),
       'card_views',             (select count(*) from ev where type = 'card_view'),
       'referral_registrations', (select count(*) from reg where referred_by is not null),
+      -- eligible = students with at least one verified referral (a friend who registered)
+      'eligible',               (select count(distinct referred_by) from reg where referred_by is not null),
+      'submissions',            (select count(*) from submissions where is_demo = p_demo),
+      'spend_acquisition_inr',  (select coalesce(sum(amount_inr), 0) from spend_entries where is_demo = p_demo and category = 'acquisition'),
+      'spend_prize_inr',        (select coalesce(sum(amount_inr), 0) from spend_entries where is_demo = p_demo and category = 'prize'),
       'spend_inr',              (select coalesce(sum(amount_inr), 0) from spend_entries where is_demo = p_demo),
       'blueprints_ai',          (select count(*) from blueprints where is_demo = p_demo and generated_by = 'ai'),
       'blueprints_fallback',    (select count(*) from blueprints where is_demo = p_demo and generated_by = 'fallback'),
@@ -221,7 +256,7 @@ as $$
     'colleges',      (select coalesce(jsonb_agg(to_jsonb(c) order by c.registrations desc), '[]'::jsonb) from colleges c),
     'branches',      (select coalesce(jsonb_agg(to_jsonb(b) order by b.registrations desc), '[]'::jsonb) from branches b),
     'spend',         (select coalesce(jsonb_agg(to_jsonb(s) order by s.created_at), '[]'::jsonb)
-                        from (select id, label, utm_campaign, amount_inr, created_at
+                        from (select id, label, utm_campaign, amount_inr, category, created_at
                                 from spend_entries where is_demo = p_demo) s)
   );
 $$;
@@ -253,7 +288,19 @@ as $$
     from reg group by lower(trim(college))
     order by 2 desc, 1 limit 10
   )
+  , entries as (
+    select split_part(trim(r.name), ' ', 1) as first_name, r.college, b.title,
+           (select count(*)::int from reg f where f.referred_by = r.ref_code) as referrals,
+           s.created_at
+    from submissions s
+    join reg r on r.id = s.registration_id
+    join blueprints b on b.registration_id = r.id
+    where s.is_demo = false
+    order by 4 desc, s.created_at
+    limit 50
+  )
   select jsonb_build_object(
+    'entries',   (select coalesce(jsonb_agg(to_jsonb(e) order by e.referrals desc, e.created_at), '[]'::jsonb) from entries e),
     'referrers', (select coalesce(jsonb_agg(to_jsonb(r) order by r.referrals desc), '[]'::jsonb) from referrers r),
     'colleges',  (select coalesce(jsonb_agg(to_jsonb(c) order by c.registrations desc), '[]'::jsonb) from colleges c)
   );

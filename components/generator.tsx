@@ -290,7 +290,7 @@ export function Generator({ cta }: { cta: string }) {
           <div>
             <h3 className="text-h2">Your project is ready.</h3>
             <p className="mt-2 max-w-xl text-body">
-              Register for the workshop to unlock the complete build plan and resume-ready project bullet.
+              Register for the workshop to unlock the complete build plan and resume-ready project bullet. Then refer one friend to unlock your competition entry.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

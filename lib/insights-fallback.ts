@@ -112,7 +112,7 @@ export function fallbackInsights(s: InsightSnapshot): InsightContent {
         metric: "Blueprint → registration rate",
       },
       share: {
-        action: "Put the share buttons directly under the unlocked blueprint and name the next reward in the button text.",
+        action: "Show the locked competition entry and the prize pool directly under the unlocked blueprint, with Invite a Friend as the only button.",
         metric: "Share rate",
       },
     };
@@ -127,16 +127,16 @@ export function fallbackInsights(s: InsightSnapshot): InsightContent {
     .sort((x, y) => y.cost_per_registration_inr! - x.cost_per_registration_inr!)[0];
   if (paid && best && paid.campaign !== (best as { campaign?: string }).campaign) {
     actions.push({
-      action: `Pause further spend on ${name(paid.source, paid.campaign)} and move it to referral prizes.`,
+      action: `Pause further spend on ${name(paid.source, paid.campaign)} and put the effort into community groups instead.`,
       why: `It cost ${inr(paid.cost_per_registration_inr!)} per registration (${inr(paid.spend_inr)} for ${paid.registrations}) and converts ${pct(paid.visit_to_register)} of visitors, versus ${pct(best.visit_to_register)} for ${best.label}.`,
       metric: "Cost per registration",
     });
   }
 
   if (s.ab_test.winner) {
-    const hook = s.ab_test.winner === "a" ? "resume" : "build";
+    const hook = s.ab_test.winner === "a" ? "project-first" : "competition-first";
     actions.push({
-      action: `Send all traffic to variant ${s.ab_test.winner.toUpperCase()} (the ${hook} hook) and test a new challenger against it.`,
+      action: `Send all traffic to variant ${s.ab_test.winner.toUpperCase()} (the ${hook} message) and test a new challenger against it.`,
       why: s.ab_test.verdict,
       metric: "Visit → registration rate",
     });
@@ -150,8 +150,8 @@ export function fallbackInsights(s: InsightSnapshot): InsightContent {
 
   if (actions.length < 3 && rates.measured_k_factor !== null && rates.measured_k_factor < plan.k_factor) {
     actions.push({
-      action: "Ask each new registrant to share with one specific classmate instead of posting generally.",
-      why: `Measured K is ${rates.measured_k_factor.toFixed(2)} against a planning assumption of ${plan.k_factor}: ${totals.referral_registrations} referred registrations from ${totals.registrations} registrants.`,
+      action: "Message registrants whose entry is still locked: one friend registering unlocks it.",
+      why: `${totals.students_with_competition_entry_unlocked} of ${totals.registrations} registrants have unlocked their entry. Measured K is ${rates.measured_k_factor.toFixed(2)} against a planning assumption of ${plan.k_factor}: ${totals.referral_registrations} referred registrations from ${totals.registrations} registrants.`,
       metric: "K-factor",
     });
   }

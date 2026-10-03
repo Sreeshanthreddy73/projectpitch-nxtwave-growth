@@ -11,7 +11,7 @@ export default function NotFound() {
         <h1 className="text-h1 mt-3">We couldn&apos;t find that page.</h1>
         <p className="mt-3 text-body">The link may be mistyped, or the project may no longer exist.</p>
         <Link href="/#generator" className={buttonClass("primary", "lg", "mt-7")}>
-          Generate My AI Project <ArrowIcon />
+          Build My Project <ArrowIcon />
         </Link>
       </main>
       <SiteFooter />

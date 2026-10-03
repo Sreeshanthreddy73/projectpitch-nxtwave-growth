@@ -1,90 +1,171 @@
-# ProjectPitch
+# ProjectPitch — Build. Refer. Compete.
 
-A working growth prototype for the NxtWave Growth Challenge: drive registrations for the workshop
-**"Build Your First AI Project in 60 Minutes"** (target: 500 final-year engineering students, 7 days, ₹2,000).
+A working growth asset for the NxtWave Growth Intern – Growth Challenge.
 
-> Prototype created for the NxtWave Growth Challenge. Not an official NxtWave page. Referral rewards in
-> the app are features of this prototype, not NxtWave offers.
+> **This is a prototype and a simulation.** It was created for the NxtWave Growth Challenge. It is not an
+> official NxtWave page, and the competition and prizes described here are part of a proposed campaign plan,
+> not an official NxtWave competition, unless NxtWave itself states otherwise. No real prizes are paid, no ads
+> were bought, and no students were contacted. The app does not claim 500 students were acquired: it shows how
+> the campaign could reach 500 registrations in 7 days under stated assumptions.
 
-## What the product does
+## Campaign concept
 
-A student answers three questions (interest, experience level, branch/year) and gets a personalised AI project
-blueprint. They see a preview straight away; registering for the workshop unlocks the 60-minute build plan
-and a resume bullet. Each registrant gets a public **blueprint card** to share. Classmates who open the card
-generate their own blueprint, and the referral is credited to the sharer.
+| | |
+|---|---|
+| Workshop | "Build Your First AI Project in 60 Minutes" |
+| Goal | 500 final-year engineering student registrations |
+| Duration | 7 days |
+| Budget | ₹2,000 |
+| Idea | A student builds an AI project, registers, and must refer **one friend who also registers** to unlock a competition entry |
 
-Every step is tracked, so the admin dashboard shows the funnel, sources, campaigns, an A/B test, referral
-performance and cost per registration, and can generate a growth recommendation from those numbers.
+The working asset is not a landing page. It is:
+
+**AI project generator + registration + referral tracker/gate + competition eligibility + project submission + growth analytics.**
+
+### Student journey
+
+1. Land on ProjectPitch: "Build. Refer. Compete."
+2. Answer three questions and get a personalised AI project (preview visible before sign-up).
+3. Register to unlock the full 60-minute build plan and resume bullet.
+4. Receive a unique referral link and see: "Refer 1 friend to unlock your competition entry."
+5. A friend opens the link ("You were invited to build an AI project"), builds their own project and registers.
+6. The original student's referral becomes **verified** and their competition entry **unlocks**.
+7. The student submits their project. Entries appear on the Campus Builders page.
+
+The progress tracker on the student's hub shows the five steps and their real state:
+Project created → Registration complete → Refer 1 friend → Competition entry → Project submission.
+
+### The referral rule
+
+- A referral counts **only** when the referred friend completes registration through the referrer's link.
+- A link click, a visit to the referral page, or a generated project does not count.
+- Eligibility is not a stored flag. It is computed from the database each time: a student is eligible when at
+  least one real registration has `referred_by` equal to their code. `/api/submit` re-checks this on the server
+  and refuses with `403 locked` otherwise, whatever the page shows.
+- Self-referral is blocked where it can be seen: a visitor's own code is never credited to them (cookie check),
+  and each email can register once.
+
+### Budget allocation (plan)
+
+| Item | Amount | Share |
+|---|---|---|
+| Paid acquisition (ads) | ₹500 | 25% |
+| 1st prize | ₹1,000 | 50% |
+| 2nd prize | ₹500 | 25% |
+| **Total** | **₹2,000** | |
+
+The dashboard keeps two things apart: the **simulated campaign allocation** above (a plan, shown in both views)
+and **measured real spend** (entries an admin records, shown only in the Real view). Acquisition cost per
+registration uses acquisition spend only; total cost per registration includes prizes.
+
+### Growth loop
 
 ```
-visit → generate blueprint → preview → register → unlock → share card
-                                                              │
-                 friend opens card → generates → registers ◄──┘  (referral credited)
+Paid / community exposure → student generates project → registration → referral requirement
+      ↑                                                                        ↓
+more students enter ← student shares ← project submission ← competition unlocked ← friend registers
 ```
 
-## Why it was built
+The referral requirement is the central mechanism: every student who wants to compete must bring one more
+registered student.
 
-With ₹2,000, paid reach cannot deliver 500 registrations; most have to come from organic sharing. Three decisions follow:
+## Simulation assumptions
 
-- **Value before the form.** The student gets something useful before being asked for details.
-- **The blueprint is the growth object.** Students share their own project, not an "invite a friend" link.
-- **Measure, then learn.** Attribution, an A/B test with a real significance check, and an insights step
-  whose recommendations the campaign owner accepts or rejects.
+Demo mode on the dashboard is the campaign simulation. It is always labelled **DEMO DATA — CAMPAIGN
+SIMULATION** and is never mixed with real data. It is built from the assumptions in `lib/demo-data.ts`, not
+measured:
 
-It maps onto the growth workflow: Idea (the blueprint hook) → Build (this app) → Launch (tracked links) →
-Measure (dashboard) → Learn (A/B test + insights) → Scale (referral loop, best channel).
+- **Registrations per day:** 40, 55, 65, 75, 85, 90, 90. Cumulative: 40, 95, 160, 235, 320, 410, 500.
+- **Registrations by source (of 500):**
+
+  | Source | Registrations | Assumed visit → registration |
+  |---|---|---|
+  | WhatsApp / student communities | 170 | 30% |
+  | Referral loop | 170 | 38.5% |
+  | Clubs / community distribution | 95 | 32% |
+  | Organic / direct | 40 | 20% |
+  | Paid acquisition (Instagram ads, ₹500) | 25 | 12.6% |
+
+- **Referral share:** 34% of registrations come through the referral gate (K ≈ 0.34).
+- **Submissions:** 60% of students who unlock their entry are assumed to submit.
+- **A/B test:** the simulated split is deliberately close (52/48), so the demo shows "no significant
+  difference" rather than a manufactured winner.
+- People are invented: random first names with an initial, fictional colleges, `example.com` emails.
+
+These numbers are assumptions chosen to be plausible. The paid-acquisition figure in particular (25
+registrations from ₹500) is an estimate, not a quote from an ad platform.
+
+## A/B test
+
+Visitors are split 50/50 and keep their variant (`?v=a` or `?v=b` forces one for demos).
+
+- **A — project-first:** "Create an AI project in 60 minutes. Refer one friend to unlock your competition entry."
+- **B — competition-first:** "Compete for the prize pool with an AI project you build in 60 minutes…"
+
+The headline, CTA and generator are identical. The verdict is a two-proportion z-test computed in code
+(`lib/stats.ts`) and reports "not enough data" until each variant has 100 visitors.
+
+## What is tracked
+
+| Event | When |
+|---|---|
+| `visit` | landing page viewed |
+| `generate` | project generated |
+| `register` | registration completed (this also creates the referral link) |
+| `share_click` | referrer copies or shares their link |
+| `card_view` | a friend opens the referral link (the click) |
+| `referral_verified` | a referred friend completes registration |
+| `competition_unlocked` | a student's first verified referral |
+| `project_submission` | a competition entry is submitted |
+
+Every event and registration carries first-touch `utm_source`, `utm_medium`, `utm_campaign`, the referral code
+and the A/B variant, read on the server from httpOnly cookies set by `proxy.ts`.
 
 ## Architecture
 
 One Next.js application. No separate backend, queue or auth service.
 
 ```
-Browser ──► proxy.ts            sets session id, A/B variant, first-touch attribution (httpOnly cookies)
-        ──► pages (app/)        landing, public card, hub, leaderboard, admin
+Browser ──► proxy.ts            session id, A/B variant, first-touch attribution (httpOnly cookies)
+        ──► pages (app/)        landing, referral card, hub, Campus Builders, admin
         ──► route handlers      app/api/*  (server only)
-              ├─ lib/db.ts        Supabase client, secret key
-              ├─ lib/ai.ts        Claude API  ──fails / no key──► deterministic fallback
-              ├─ lib/tracking.ts  reads attribution cookies, writes events
-              └─ lib/metrics.ts   calls the SQL function dashboard_metrics()
+              ├─ lib/db.ts          Supabase client, secret key
+              ├─ lib/ai.ts          Claude API  ──fails / no key──► deterministic fallback
+              ├─ lib/competition.ts eligibility and tracker state, derived from referrals
+              ├─ lib/tracking.ts    reads attribution cookies, writes events
+              └─ lib/metrics.ts     calls the SQL function dashboard_metrics()
 ```
 
-Key design points:
-
-- **The lock is server-side.** `/api/generate` returns only the preview. The build plan and resume bullet stay
-  in the database until `/api/register` succeeds for the same browser session.
-- **Real and demo data never mix.** Every table has `is_demo`. Every query filters on one value. The dashboard
-  has a Real / Demo switch and no combined view; public pages read real data only.
-- **AI is optional.** Without `ANTHROPIC_API_KEY`, blueprints come from 18 hand-written templates
-  (`lib/fallback.ts`) and insights from rules (`lib/insights-fallback.ts`). If a key is set and the call fails,
-  the same fallback is used. Each result records `generated_by: ai | fallback`.
-- **Insights use aggregates only.** SQL computes the metrics; `toSnapshot()` in `lib/metrics.ts` copies counts
-  and rates into the payload. Names, emails and referral codes are never sent to the model.
-- **The A/B verdict is computed in code** (`lib/stats.ts`, two-proportion z-test) and reports
-  "not enough data" until each variant has 100 visitors.
+- **The blueprint lock is server-side.** `/api/generate` returns only the preview; the plan and resume bullet
+  stay in the database until `/api/register` succeeds for the same browser session.
+- **Real and demo data never mix.** Every table has `is_demo`; every query filters on one value; public pages
+  read real data only.
+- **AI is optional.** Without `ANTHROPIC_API_KEY`, projects come from 18 hand-written templates and insights
+  from rules. If a key is set and the call fails, the same fallback is used.
+- **Insights use aggregates only**, and only recommend: the campaign owner accepts or rejects each action.
 
 ### Folder structure
 
 ```
 app/
-  page.tsx                  landing page: hero (variant A or B), generator, how it works, growth loop
-  b/[id]/page.tsx           public blueprint card
-  hub/[code]/page.tsx       full blueprint, share panel, referral rewards
-  r/[code]/route.ts         short referral link → card
-  leaderboard/page.tsx
+  page.tsx                  landing: hero (variant A or B), generator, 5 steps, growth loop
+  b/[id]/page.tsx           referral page / public project card
+  hub/[code]/page.tsx       project workspace: tracker, submission, share, referrals
+  r/[code]/route.ts         short referral link → referral page
+  leaderboard/page.tsx      Campus Builders: competition entries, top referrers, colleges
   admin/                    login + dashboard
-  api/generate, register, event, referral/[code]
+  api/generate, register, submit, event, referral/[code]
   api/admin/login, metrics, insights, insights/[id], demo-data, spend
-components/                 UI: generator, blueprint views, share panel, landing/ sections, admin/ dashboard
-lib/                        db, ai, fallback, tracking, metrics, stats, demo-data, auth, config
-content/packs.ts            content of the prototype reward packs
+components/                 generator, blueprint views, competition tracker, submit form, landing/, admin/
+lib/                        db, ai, fallback, competition, tracking, metrics, stats, demo-data, auth, config
 supabase/schema.sql         tables, indexes, RLS, SQL functions
 proxy.ts                    session, variant and attribution cookies
 ```
 
 ## Tech stack
 
-Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Postgres) · Recharts ·
-Anthropic SDK (optional) · Zod · deployed on Vercel.
+Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Postgres) · Recharts · Anthropic SDK
+(optional) · Zod · deployable on Vercel.
 
 ## Environment variables
 
@@ -97,31 +178,31 @@ Copy `.env.example` to `.env.local`.
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | no | no | Not read by the app today; kept for a future browser client |
 | `ADMIN_PASSWORD` | for `/admin` | **yes** | Admin dashboard password |
 | `ANTHROPIC_API_KEY` | no | **yes** | Switches on live AI; empty = deterministic fallback |
-| `ANTHROPIC_MODEL` | no | no | Model override (default `claude-opus-5-5`; e.g. `claude-haiku-4-5` for lower cost) |
+| `ANTHROPIC_MODEL` | no | no | Model override (default `claude-opus-5-5`) |
 
-The three secrets are read only in `lib/db.ts`, `lib/auth.ts` and `lib/ai.ts`. Those files import
-`server-only`, so the build fails if one is ever pulled into browser code. `.env*` files are git-ignored
-except `.env.example`.
+The secrets are read only in `lib/db.ts`, `lib/auth.ts` and `lib/ai.ts`, which import `server-only`, so the
+build fails if one is pulled into browser code. `.env*` files are git-ignored except `.env.example`.
 
-If something is missing, nothing crashes, and who sees what depends on the audience:
+If something is missing, nothing crashes. Students see "Project generator temporarily unavailable. Please try
+again shortly." The exact setup steps go to the server log (`[setup] ...`), to a collapsed "Developer details"
+block when running `npm run dev`, and to the signed-in admin dashboard.
 
-- **Students** see the normal landing page. If generation fails they get "Project generator temporarily
-  unavailable. Please try again shortly." Setup details are never shown on public pages in production.
-- **Developers** get the exact setup steps in the server log (`[setup] ...`), and in a collapsed
-  "Developer details" block on failed pages when running `npm run dev`.
-- **The signed-in admin dashboard** shows the setup steps directly.
+## How to run
 
-## Supabase setup
+### 1. Supabase
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor → New query**, paste all of `supabase/schema.sql`, and click **Run**. It is safe to re-run.
-3. Open **Project Settings → API Keys**. Copy the **Project URL**, the **publishable** key and the **secret** key
-   into `.env.local`.
+2. Open **SQL Editor → New query**, paste all of `supabase/schema.sql`, and click **Run**.
+3. Open **Project Settings → API Keys** and copy the project URL, publishable key and secret key into `.env.local`.
 
-Row level security is enabled on every table with no policies, so the public anon key can read nothing. The app
+`schema.sql` is safe to re-run and upgrades an existing database in place. **If you created your database from
+an earlier version of this project, run it again**: this version adds the `submissions` table, three event
+types and a spend category, and the hub page needs them.
+
+Row level security is enabled on every table with no policies, so the publishable key can read nothing. The app
 only uses the secret key, on the server.
 
-## Local development
+### 2. Local
 
 ```bash
 npm install
@@ -131,91 +212,47 @@ npm run dev                    # http://localhost:3000
 
 Other commands: `npm run build`, `npm run start`, `npm run lint`.
 
-Attribution is first-touch and stored in a cookie for 30 days. To test a new source or a referral, use a
-**new incognito window** each time.
+Attribution is first-touch and stored in a cookie for 30 days. To test a referral, open the link in a **new
+incognito window**.
 
-## Demo data
+### 3. Admin and demo data
 
-The campaign in this challenge is a simulation, so the dashboard can load a simulated one.
+`/admin` asks for `ADMIN_PASSWORD` and sets a signed, httpOnly session cookie for 12 hours. Click **Load Demo
+Data** to load the campaign simulation; **Clear** removes every simulated row and nothing else.
 
-- Sign in at `/admin`, then click **Load Demo Data**. This writes about 300 registrations and 3,000 events with
-  `is_demo = true`: five days of a seven-day campaign across WhatsApp, Instagram, LinkedIn, direct and referral
-  traffic, two landing variants, and ₹1,600 of spend.
-- The Demo view always shows a **DEMO DATA — SIMULATION** banner. Students are invented, colleges are fictional,
-  emails use `example.com`.
-- **Clear** removes every demo row and nothing else. The numbers are produced by `lib/demo-data.ts` from the
-  channel assumptions at the top of that file.
+### 4. Deploy to Vercel
 
-## Admin access
-
-`/admin` asks for `ADMIN_PASSWORD`. A correct password sets a signed, httpOnly session cookie valid for 12 hours.
-There are no user accounts. Changing the password signs everyone out.
-
-The dashboard shows: progress to 500, daily pace and required pace, visitors, blueprint generations,
-registrations, shares, referral registrations, conversion rates, measured K-factor, source / campaign / A/B
-performance, top referrers, college and branch distribution, spend and cost per registration, planning
-assumptions next to measured values, and which dataset is on screen.
-
-## Testing
-
-`npm run lint` and `npm run build` must pass.
-
-The functional checklist below was run end to end during development against a real Postgres engine loaded with
-`supabase/schema.sql`. Run it again by hand after connecting your own Supabase project:
-
-| | Check |
-|---|---|
-| A–B | Generate a blueprint; the preview shows title, problem, stack, difficulty; the plan is locked |
-| C–D | Register; the hub shows the full build plan and resume bullet |
-| E–G | Copy the link; open it in incognito; the card shows no personal data; register a second student |
-| H–I | First hub shows 1 referral and the Starter Prompt Pack |
-| J–K | Dashboard (Real) shows both registrations with the right source, campaign and variant |
-| L–M | `/admin` redirects to login when signed out; wrong password is rejected |
-| N–O | Load Demo Data; Demo view fills in; Real view is unchanged |
-| P–Q | Generate Insights; accept one action and reject another with a reason |
-| R | Every screen works at 390 px wide with no sideways scrolling |
-| S | Invalid email, missing consent, duplicate email and unknown links are handled with clear messages |
-| T | With an invalid `ANTHROPIC_API_KEY`, generation still works via the fallback |
-
-## Deployment to Vercel
-
-1. Push this repository to GitHub.
-2. In Vercel, **Add New → Project**, import the repository. Framework is detected as Next.js.
-3. Add the environment variables from the table above (Production and Preview).
-4. Deploy, then open `/admin` and sign in.
+Import the repository, add the environment variables, deploy.
 
 ## 3-minute demo flow
 
-1. Open `/?utm_source=whatsapp&utm_campaign=cse_group_a`.
-2. Click **Generate My AI Project**, answer the three questions, and generate.
-3. Show the preview and the locked build plan.
-4. Register.
-5. The hub shows the full blueprint.
-6. Copy the blueprint link.
-7. Open it in an incognito window: the public card.
-8. Click **Generate My Own Project**, generate and register a second student.
-9. Back on the first hub: 1 referral, Starter Prompt Pack unlocked (updates within 10 seconds).
-10. Open `/admin` and sign in. **Real data**: two registrations, one from `whatsapp / cse_group_a`, one from `referral`.
-11. Click **Load Demo Data**: the Demo view shows a full campaign under the simulation banner.
-12. Click **Generate Insights**.
-13. Read Working / Leaking / Next 24 hours.
-14. Accept one recommendation and reject another, typing the reason for each.
+1. Open `/?utm_source=whatsapp&utm_campaign=cse_group_a`. Show "Build. Refer. Compete." and the prize pool.
+2. Click **Build My Project**, answer three questions, show the preview with the locked plan.
+3. Register. The hub shows the tracker: entry and submission locked, **Invite a Friend**.
+4. Copy the project link and open it in an incognito window: "You were invited to build an AI project."
+5. Back on the hub: still locked. A click alone does not count.
+6. In the incognito window, build a project and register.
+7. Back on the hub (updates within 10 seconds): referral verified, entry **unlocked**, **Submit Project**.
+8. Submit a project link. It appears under Competition entries on Campus Builders.
+9. Open `/admin`. **Real data**: two registrations, one eligible student, one submission.
+10. Switch to **Demo data**: the 7-day simulation, 500 registrations, the cumulative chart, sources and budget.
+11. Click **Generate Insights**, then accept one recommendation and reject another with a reason.
 
-Add `?v=a` or `?v=b` to the landing URL to force a variant when demonstrating the A/B test. Variant A is the
-resume hook ("...an AI project your resume can show"); variant B is the build hook ("...an AI project you can
-actually build"). Only the hero message differs; the CTA and the generator are identical.
+## Testing
 
-## Design system
-
-Defined in `app/globals.css` and `components/ui.tsx`: warm neutral background, near-black ink, one action
-colour (vermilion) for CTAs and selection, and a violet accent used only for AI/generated states. Headlines use
-Bricolage Grotesque, body text Geist, labels Geist Mono. Animations are CSS-only and switch off under
-`prefers-reduced-motion`.
+`npm run lint` and `npm run build` must pass. The functional checklist (generation, registration, referral
+link, referred registration, verification, unlock, submission, dashboard, Demo/Real separation, invalid input,
+AI fallback) was run end to end during development against a real Postgres engine loaded with `schema.sql`.
 
 ## Known limitations
 
-- Email is the only duplicate check, so one person with several addresses can inflate referrals. OTP
-  verification would close this at the cost of a longer form.
-- The hub link is the student's only way back to their blueprint; there is no "resend my link".
-- Rate limiting is in memory, per server instance: it slows abuse but does not stop a determined attacker.
-- No workshop is scheduled. Registration records intent only.
+- **Identity is not verified.** Email is the only duplicate check, so one person with two email addresses and
+  two browsers can refer themselves. OTP or college-email verification would close this at the cost of a longer
+  form; it was left out deliberately to keep registration short.
+- **Self-referral is blocked only by cookie and email.** Clearing cookies defeats the cookie check.
+- **No judging system.** Entries are listed by verified referrals; picking winners is outside this prototype.
+- **Submitted links are not shown publicly** and are not checked beyond requiring `https://`.
+- **The hub link is the student's only way back** to their project; there is no "resend my link".
+- **Rate limiting is in memory**, per server instance: it slows abuse but does not stop a determined attacker.
+- **No workshop or competition is actually scheduled.** Registration records intent only.
+- **The live AI path needs an API key** and has only been exercised through its failure path.

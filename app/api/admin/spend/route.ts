@@ -9,6 +9,7 @@ const Input = z.object({
   label: z.string().trim().min(2).max(80),
   amount_inr: z.number().int().min(1).max(100000),
   utm_campaign: z.string().trim().max(60).optional(),
+  category: z.enum(["acquisition", "prize"]).default("acquisition"),
 });
 
 // Record real campaign spend, optionally tied to a utm_campaign so cost per
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
         label: input.data.label,
         amount_inr: input.data.amount_inr,
         utm_campaign: cleanParam(input.data.utm_campaign),
+        category: input.data.category,
         is_demo: false,
       }),
     );

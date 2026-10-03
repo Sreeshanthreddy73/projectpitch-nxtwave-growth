@@ -27,7 +27,7 @@ export function Panel({
     <Card className={cx("min-w-0 p-5 sm:p-6", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="text-h3">{title}</h2>
           {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
         </div>
         {action}
@@ -39,78 +39,6 @@ export function Panel({
 
 function Empty({ children }: { children: ReactNode }) {
   return <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{children}</p>;
-}
-
-function Kpi({ label, value, sub, children }: { label: string; value: string; sub: ReactNode; children?: ReactNode }) {
-  return (
-    <Card className="p-5">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-1.5 text-3xl font-semibold tabular-nums tracking-tight text-ink">{value}</p>
-      {children}
-      <p className="mt-2 text-sm text-body">{sub}</p>
-    </Card>
-  );
-}
-
-export function KpiRow({ m }: { m: Metrics }) {
-  const { totals, pace } = m;
-  const progress = Math.min(totals.registrations / CAMPAIGN.targetRegistrations, 1);
-  const dayLabel =
-    pace.day > CAMPAIGN.durationDays ? "Campaign window has ended" : `Day ${pace.day} of ${CAMPAIGN.durationDays}`;
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Kpi
-        label="Progress to target"
-        value={`${num(totals.registrations)} / ${num(CAMPAIGN.targetRegistrations)}`}
-        sub={`${pct(progress, 0)} of target · ${num(pace.remaining)} to go`}
-      >
-        <div
-          className="mt-3 h-2 overflow-hidden rounded-full bg-line"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={CAMPAIGN.targetRegistrations}
-          aria-valuenow={totals.registrations}
-          aria-label="Registrations against target"
-        >
-          <div className="h-full rounded-full bg-series" style={{ width: `${progress * 100}%` }} />
-        </div>
-      </Kpi>
-      <Kpi
-        label="Daily registration pace"
-        value={pace.perDay === null ? "—" : `${decimal(pace.perDay, 1)}/day`}
-        sub={
-          !pace.started
-            ? "The campaign clock starts with the first tracked visit."
-            : pace.requiredPerDay === null
-              ? dayLabel
-              : `${dayLabel} · need ${num(pace.requiredPerDay)}/day for the remaining ${pace.daysLeft} ${pace.daysLeft === 1 ? "day" : "days"}`
-        }
-      >
-        {pace.projected !== null && pace.daysLeft > 0 && (
-          <p className="mt-1 text-sm text-muted">Projected at this pace: {num(pace.projected)}</p>
-        )}
-      </Kpi>
-      <Kpi
-        label="K-factor (measured)"
-        value={decimal(m.kFactor)}
-        sub={`${num(totals.referral_registrations)} referred of ${num(totals.registrations)} registrations`}
-      >
-        <p className="mt-1 text-sm text-muted">
-          Assumed {PLANNING_ASSUMPTIONS.kFactor} · {PLANNING_ASSUMPTIONS.label}
-        </p>
-      </Kpi>
-      <Kpi
-        label="Cost per registration"
-        value={inr(m.costPerRegistration)}
-        sub={
-          totals.spend_inr > 0
-            ? `${inr(totals.spend_inr)} spent of ${inr(CAMPAIGN.budgetInr)} budget`
-            : `No spend recorded · ${inr(CAMPAIGN.budgetInr)} budget`
-        }
-      />
-    </div>
-  );
 }
 
 export function Funnel({ m }: { m: Metrics }) {
@@ -190,7 +118,7 @@ function Table({ head, children }: { head: [string, "left" | "right"][]; childre
 
 export function SourceTable({ m }: { m: Metrics }) {
   return (
-    <Panel title="Source performance" hint="First-touch utm_source. Referral = arrived through a shared blueprint card.">
+    <Panel title="Where are registrations coming from?" hint="First-touch utm_source. Referral = arrived through a shared blueprint card.">
       {m.bySource.length === 0 ? (
         <Empty>No traffic yet. Open the landing page with ?utm_source=whatsapp to see a source appear.</Empty>
       ) : (
@@ -303,7 +231,7 @@ export function AbPanel({ m }: { m: Metrics }) {
 
 export function TopReferrers({ m }: { m: Metrics }) {
   return (
-    <Panel title="Top referrers" hint="Registrations credited to each student's blueprint card.">
+    <Panel title="Are referrals working?" hint="Registrations credited to each student's blueprint card.">
       {m.topReferrers.length === 0 ? (
         <Empty>No referred registrations yet.</Empty>
       ) : (

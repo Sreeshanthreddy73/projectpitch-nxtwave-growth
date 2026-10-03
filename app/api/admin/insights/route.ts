@@ -37,6 +37,6 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ insight: row });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }

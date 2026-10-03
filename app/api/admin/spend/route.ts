@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }
 
@@ -44,6 +44,6 @@ export async function DELETE(request: Request) {
     unwrap(await db().from("spend_entries").delete().eq("id", id.data).eq("is_demo", false));
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }

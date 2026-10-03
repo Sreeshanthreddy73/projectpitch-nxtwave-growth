@@ -28,6 +28,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     unwrap(await db().from("insights").update({ next_actions: actions }).eq("id", id.data));
     return NextResponse.json({ next_actions: actions });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }

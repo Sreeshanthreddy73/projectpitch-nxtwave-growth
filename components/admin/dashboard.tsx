@@ -8,6 +8,7 @@ import type { Metrics } from "@/lib/metrics";
 import type { InsightRow } from "@/lib/types";
 import { Badge, Button, Card, Spinner, cx } from "../ui";
 import { DailyChart } from "./daily-chart";
+import { Headline } from "./headline";
 import { InsightsPanel } from "./insights-panel";
 import {
   AbPanel,
@@ -15,7 +16,6 @@ import {
   CampaignTable,
   Distribution,
   Funnel,
-  KpiRow,
   Panel,
   SourceTable,
   SpendPanel,
@@ -35,6 +35,9 @@ export function Dashboard() {
   const [state, setState] = useState<State>({ phase: "loading" });
   const [busy, setBusy] = useState<"load" | "clear" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Bumped when demo data is loaded or cleared, so panels holding their own
+  // state (insights) start again from what the server now has.
+  const [epoch, setEpoch] = useState(0);
 
   // quiet = background refresh: keep showing the current numbers if it fails.
   const load = useCallback(
@@ -92,6 +95,7 @@ export function Dashboard() {
     } catch {
       setNotice("Could not reach the server.");
     }
+    setEpoch((n) => n + 1);
     setBusy(null);
   }
 
@@ -108,18 +112,18 @@ export function Dashboard() {
     <div className="mx-auto w-full max-w-7xl px-5 pb-20">
       <header className="flex flex-wrap items-center justify-between gap-4 py-5">
         <div>
-          <p className="text-sm text-muted">{SITE_NAME} · Growth dashboard</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{CAMPAIGN.workshopTitle}</h1>
+          <p className="eyebrow text-muted">{SITE_NAME} · Growth dashboard</p>
+          <h1 className="text-h2">{CAMPAIGN.workshopTitle}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div role="group" aria-label="Dataset" className="inline-flex rounded-lg border border-line bg-card p-1">
+          <div role="group" aria-label="Dataset" className="inline-flex rounded-xl border border-line bg-card p-1">
             {(["real", "demo"] as const).map((option) => (
               <button
                 key={option}
                 onClick={() => switchTo(option)}
                 aria-pressed={dataset === option}
                 className={cx(
-                  "rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                  "rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors",
                   dataset === option ? "bg-ink text-white" : "text-muted hover:text-ink",
                 )}
               >
@@ -205,7 +209,7 @@ export function Dashboard() {
         )}
 
         {ready && ready.metrics.dataset === dataset && (
-          <DashboardBody key={dataset} data={ready} reload={() => load(dataset, true)} />
+          <DashboardBody key={`${dataset}-${epoch}`} data={ready} reload={() => load(dataset, true)} />
         )}
       </div>
     </div>
@@ -221,7 +225,7 @@ function DashboardBody({ data, reload }: { data: Payload; reload: () => void }) 
     return (
       <div className="space-y-6">
         <Card className="p-8 text-center">
-          <h2 className="text-lg font-semibold">{isDemo ? "No demo data loaded" : "No real activity yet"}</h2>
+          <h2 className="text-h3">{isDemo ? "No demo data loaded" : "No real activity yet"}</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-body">
             {isDemo
               ? "Click Load Demo Data above to fill this view with a simulated five-day campaign."
@@ -240,7 +244,7 @@ function DashboardBody({ data, reload }: { data: Payload; reload: () => void }) 
 
   return (
     <div className="space-y-6">
-      <KpiRow m={m} />
+      <Headline m={m} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Funnel m={m} />
@@ -249,9 +253,7 @@ function DashboardBody({ data, reload }: { data: Payload; reload: () => void }) 
         </Panel>
       </div>
 
-      {/* Keyed on the newest saved insight so the panel resets if the server's list changes (e.g. demo data reloaded). */}
       <InsightsPanel
-        key={insights[0]?.id ?? "none"}
         dataset={m.dataset}
         initial={insights}
         aiConfigured={status.aiConfigured}

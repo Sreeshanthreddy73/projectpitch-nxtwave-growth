@@ -31,6 +31,6 @@ export async function GET(request: Request) {
       status: { demoLoaded: (unwrap(demoProbe)?.length ?? 0) > 0, aiConfigured: aiConfigured() },
     });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }

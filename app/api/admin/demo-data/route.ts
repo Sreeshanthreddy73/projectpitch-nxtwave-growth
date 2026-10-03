@@ -33,7 +33,7 @@ export async function POST() {
       loaded: { registrations: data.registrations.length, events: data.events.length, spend_entries: data.spend.length },
     });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }
 
@@ -44,6 +44,6 @@ export async function DELETE() {
     await clearDemoData();
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return routeError(err);
+    return routeError(err, "admin");
   }
 }

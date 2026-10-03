@@ -560,8 +560,9 @@ export function CriteriaPanel({ m }: { m: Metrics }) {
       </dl>
       <p className="mt-3 text-xs leading-relaxed text-muted">
         These are proposed campaign judging criteria, not official NxtWave criteria. The automated score is a first
-        pass over what the student wrote; it does not verify the project or the 60-minute build, and human judges
-        decide. Referrals qualify a student to enter and are not part of the score. {COMPETITION_NOTE}
+        pass over what the student wrote; it does not verify the project, and human judges decide. &ldquo;60-minute
+        execution&rdquo; needs human verification: the Build Mode timer runs in the student&apos;s browser, is not
+        recorded, and proves nothing. Referrals qualify a student to enter and are not part of the score. {COMPETITION_NOTE}
       </p>
     </Panel>
   );

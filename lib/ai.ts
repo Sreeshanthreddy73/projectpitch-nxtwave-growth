@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { CRITERIA } from "./config";
-import { fallbackEvaluation, type Evaluation, type SubmissionText } from "./evaluation";
+import { AUTOMATED_CEILING, SIXTY_NEEDS_HUMAN, fallbackEvaluation, type Evaluation, type SubmissionText } from "./evaluation";
 import { fallbackBlueprint, ideaBlueprint } from "./fallback";
 import { fallbackInsights } from "./insights-fallback";
 import type { InsightSnapshot } from "./metrics";
@@ -191,7 +191,7 @@ ${CRITERIA.map((c) => `- ${c.id}: ${c.label} (max ${c.max})`).join("\n")}
 Rules:
 - Return exactly one entry per criterion id above.
 - note: one short sentence, addressed to the student, naming the main reason for the score or what would raise it.
-- "sixty" is self-reported: base it on what the student says they finished and left out, and say it is not verified.
+- "sixty" needs human verification: base it only on what the student says they finished and left out. A timer is not evidence and you are not told about one.
 - Vague or empty answers score low. Do not reward length for its own sake.
 - Referrals, shares and popularity are not part of this score. Ignore them.`;
 
@@ -223,7 +223,10 @@ export async function evaluateSubmission(submission: SubmissionText): Promise<Ev
       if (response.stop_reason === "end_turn" && parsed) {
         const criteria = CRITERIA.map((criterion) => {
           const line = parsed.criteria.find((x) => x.id === criterion.id);
-          return line ? { ...criterion, score: Math.max(0, Math.min(criterion.max, Math.round(line.score))), note: line.note.slice(0, 200) } : null;
+          if (!line) return null;
+          const cap = AUTOMATED_CEILING[criterion.id] ?? criterion.max;
+          const note = criterion.id === "sixty" ? `${SIXTY_NEEDS_HUMAN} ${line.note}` : line.note;
+          return { ...criterion, score: Math.max(0, Math.min(cap, Math.round(line.score))), note: note.slice(0, 220) };
         });
         if (criteria.every((line) => line !== null)) return { criteria, generated_by: "ai" };
       }

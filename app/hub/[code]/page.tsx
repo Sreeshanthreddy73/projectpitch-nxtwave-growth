@@ -126,11 +126,13 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                   </Badge>
                 </div>
                 <div className="mt-5">
-                  <ScoreBreakdown total={submission.score ?? totalScore(evaluation.criteria)} lines={evaluation.criteria} />
+                  <ScoreBreakdown total={submission.score ?? totalScore(evaluation.criteria)} lines={evaluation.criteria} evaluation />
                 </div>
                 <p className="mt-5 border-t border-line pt-4 text-xs leading-relaxed text-body">
                   A first pass based on what you wrote in your submission. It does not open your links, so it cannot
-                  confirm that the project works or that it was built in 60 minutes. Human judges decide the ranking.
+                  confirm that the project works or that it was built in 60 minutes. &ldquo;60-minute execution&rdquo;
+                  needs human verification: the Build Mode timer is not sent to us and does not prove it. Human judges
+                  decide the ranking.
                   These are proposed campaign judging criteria, not official NxtWave criteria. Referrals are not part of
                   this score.
                 </p>
@@ -235,10 +237,16 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                 </Badge>
               </div>
               <p className="mt-2 text-sm text-body">
-                A plan to follow in the workshop. The 60 minutes of building happen there, not on this page.
+                Your plan for the workshop. When the workshop starts, open Build Mode to follow it against the clock.
               </p>
               <div className="mt-6">
                 <BuildTimeline build_plan={blueprint.build_plan} />
+              </div>
+              <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-6">
+                <Link href={`/hub/${registration.ref_code}/build`} className={buttonClass("dark", "lg")}>
+                  Start 60-Minute Build <ArrowIcon />
+                </Link>
+                <p className="text-sm text-muted">Opens Build Mode. The timer starts when you press start.</p>
               </div>
             </Card>
 

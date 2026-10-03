@@ -8,6 +8,9 @@ import { CRITERIA, type CriterionId, type ScoreLine } from "./config";
 // linked; it does not open the project, so it cannot verify that the project
 // works or that it was built in 60 minutes. It is a first pass for human
 // judges, not a decision.
+//
+// The Build Mode timer is never an input here: it runs in the browser and is
+// not sent to the server.
 
 export type SubmissionText = {
   title: string;
@@ -24,6 +27,11 @@ const has = (text: string, pattern: RegExp) => pattern.test(text);
 const clamp = (n: number, max: number) => Math.max(0, Math.min(max, Math.round(n)));
 // 0..1 for how much was written, saturating at `full` characters.
 const depth = (text: string, full: number) => Math.min(text.trim().length / full, 1);
+
+// Two criteria cannot be confirmed from text alone, so an automated pass (AI
+// or rules) never awards them full marks: a judge has to open the project.
+export const AUTOMATED_CEILING: Partial<Record<CriterionId, number>> = { functionality: 27, sixty: 12 };
+export const SIXTY_NEEDS_HUMAN = "Needs human verification.";
 
 export function totalScore(criteria: ScoreLine[]): number {
   return criteria.reduce((sum, line) => sum + line.score, 0);
@@ -51,7 +59,7 @@ export function fallbackEvaluation(s: SubmissionText): Evaluation {
     },
     sixty: {
       value: 5 + (has(all, /mvp|scope|left out|cut|only|first version|in 60|one hour|within the hour|workshop/i) ? 5 : 0) + depth(s.result, 100) * 3 + (numbers ? 2 : 0),
-      note: "Self-reported: based on what you say you finished and what you left out. Not verified.",
+      note: "Needs human verification. Based only on what you say you finished and left out; the Build Mode timer is not evidence.",
     },
     demo: {
       value: 2 + (s.demo_url ? 4 : 0) + depth(all, 320) * 3 + (numbers ? 1 : 0),
@@ -59,14 +67,10 @@ export function fallbackEvaluation(s: SubmissionText): Evaluation {
     },
   };
 
-  // Two criteria cannot be confirmed from text alone, so this automated pass
-  // never awards them full marks: a judge has to open the project.
-  const ceiling: Partial<Record<CriterionId, number>> = { functionality: 27, sixty: 12 };
-
   return {
     criteria: CRITERIA.map((criterion) => ({
       ...criterion,
-      score: clamp(score[criterion.id].value, ceiling[criterion.id] ?? criterion.max),
+      score: clamp(score[criterion.id].value, AUTOMATED_CEILING[criterion.id] ?? criterion.max),
       note: score[criterion.id].note,
     })),
     generated_by: "fallback",

@@ -19,12 +19,19 @@ Growth Intern – Growth Challenge.
 | Goal | 500 final-year engineering student registrations in 7 days |
 | Budget | ₹2,000 (simulated) |
 
-ProjectPitch works **before** and **after** the workshop. It does not host or verify the 60-minute build: that
-happens in the NxtWave workshop. There is no timer and no coding environment here.
+ProjectPitch works **before**, **during** and **after** the workshop:
+
+- **ProjectPitch does not host the actual NxtWave workshop.** The student builds their project there.
+- **Build Mode is a prototype of the workshop engagement experience**: a 60-minute countdown that follows the
+  student's own blueprint, phase by phase.
+- **The timer is an engagement mechanism, not proof of build completion.** It does not verify that anything
+  was built, and it has no effect on eligibility or scores.
+
+There is no coding environment here, and the timer never appears in the idea or registration flow.
 
 ```
-GET IDEA → REGISTER → MAKE IT 60-MINUTE READY → BUILD AT WORKSHOP → SUBMIT → GET EVALUATED
-   ↑                                                                              ↓
+GET IDEA → REGISTER → 60-MINUTE BLUEPRINT → START 60-MINUTE BUILD → SUBMIT → EVALUATE
+   ↑                                                                           ↓
 NEW STUDENT ← BUILD YOURS ← FRIEND SEES A REAL PROJECT ← SHARE PROJECT ← CAMPUS BUILDERS
 ```
 
@@ -35,8 +42,8 @@ NEW STUDENT ← BUILD YOURS ← FRIEND SEES A REAL PROJECT ← SHARE PROJECT ←
    to keep) are shown before sign-up.
 3. **Register for the workshop** to unlock the personalised 60-minute build blueprint and a resume bullet.
 4. **Refer one friend who registers** to qualify for the competition.
-5. **Build it at the workshop.** (Outside ProjectPitch. The tracker shows this step as "At workshop" and never
-   marks it done.)
+5. **Start the 60-minute build** in Build Mode when the workshop starts, and follow the blueprint against the
+   clock. (The journey tracker shows this step as "At workshop" and never marks it done.)
 6. **Submit the project** and get a preliminary evaluation.
 7. **Appear on Campus Builders** with a shareable project card: "I built X in the NxtWave AI workshop."
 8. **A friend sees the real project**, taps **Build Yours**, and starts at step 1, credited to the builder.
@@ -69,6 +76,29 @@ Unlocked by registration. For a typed idea it follows five phases: 0–10 setup,
 functionality, 45–55 interface and testing, 55–60 demo preparation. It is a planning blueprint for the
 workshop, labelled as such.
 
+### 60-Minute Build Mode
+
+Opened from the student's hub with **Start 60-Minute Build** (`/hub/CODE/build`). It is not shown anywhere in
+the idea-generation or registration flow.
+
+- A real countdown from 60:00 to 00:00.
+- The five phases of the student's own blueprint, with their timings: Setup, AI integration, Core
+  functionality, Interface + testing, Demo preparation. The current phase is highlighted automatically from the
+  elapsed time, and finished phases are ticked.
+- Pause and resume. The session survives a page reload.
+- At zero: "Time's up — submit what you built." with **Submit Project**, which goes to the existing submission
+  form on the hub.
+
+What the timer deliberately does not do:
+
+- It runs entirely in the student's browser (`localStorage`). Nothing about it is sent to or stored on the
+  server, and there is no timer API.
+- Reaching zero does not submit anything, does not mark the project as completed, and awards no points.
+- It does not unlock the competition: a student who has not referred a friend is still told to qualify first.
+- It is not an input to the evaluation. A submission scores the same whether or not the timer was ever opened.
+- It does not prove the "60-minute execution" criterion, which is marked **Needs human verification** wherever
+  an evaluation is shown and can never receive full marks from the automated pass.
+
 ### Competition qualification and submission
 
 - **Referral = qualification. Project quality = ranking.** The two are kept apart: referral counts are never
@@ -93,8 +123,10 @@ used for the readiness score, so students know in advance how they are judged.
 
 On submission the project gets a **preliminary** score: AI-assisted when an API key is configured, rule-based
 otherwise (`lib/evaluation.ts`). Either way it reads only what the student wrote and linked. It does not open
-the project, so it cannot confirm that the project works or that it was built in 60 minutes; the rule-based
-version never awards full marks on those two criteria. The UI says this, and says human judges decide.
+the project, so it cannot confirm that the project works or that it was built in 60 minutes. Neither the AI
+nor the rule-based pass can award full marks on those two criteria, and "60-minute execution" is labelled
+**Needs human verification**: the Build Mode timer is not evidence for it. The UI says this, and says human
+judges decide.
 
 ### Campus Builders (public showcase)
 
@@ -168,6 +200,7 @@ Browser ──► proxy.ts            session id, A/B variant, first-touch attri
               ├─ lib/scope.ts       scope optimizer (rule-based)
               ├─ lib/evaluation.ts  preliminary evaluation (rule-based fallback)
               ├─ lib/competition.ts eligibility and journey state, derived from referrals
+              ├─ lib/build-mode.ts  phases and clock maths for Build Mode (timer runs in the browser only)
               └─ lib/metrics.ts     calls the SQL function dashboard_metrics()
 ```
 
@@ -228,7 +261,7 @@ cookie.
 `/admin` asks for `ADMIN_PASSWORD`. **Load Demo Data** loads the campaign simulation; **Clear** removes every
 simulated row and nothing else.
 
-## Demo flow for an evaluator (about 3 minutes)
+## Demo flow for an evaluator (3 to 4 minutes)
 
 1. Open `/?utm_source=whatsapp&utm_campaign=cse_group_a`. Hero: "Get your first AI project idea."
 2. Click **Get My Project Idea**. Answer the three questions and type an oversized idea such as
@@ -239,25 +272,33 @@ simulated row and nothing else.
 5. Copy the project link and open it in an incognito window: "You were invited to build an AI project."
 6. Back on the hub: still locked. A click does not count.
 7. In the incognito window, tap **Build Yours**, get an idea and register.
-8. Back on the hub: referral verified, competition unlocked, **Submit Project** appears.
-9. Submit a project. Show the **preliminary evaluation** and its "not official criteria, human judges decide" note.
-10. Open **View your project card**: "I built … in the NxtWave AI workshop."
-11. Open **Campus Builders**: the project card with score and **Build Yours**. Click it to show the loop closing.
-12. Open `/admin`. **Real data**: the two registrations, one qualified student, one submission.
-13. Switch to **Demo data**: the 7-day, 500-registration simulation, sources, budget and judging criteria.
-14. Click **Generate Insights**; accept one recommendation and reject another with a reason.
+8. Back on the hub: referral verified, competition unlocked.
+9. Click **Start 60-Minute Build**. Show the 60:00 clock and the five phases, press start, and pause. Explain
+   that this represents the workshop and that the timer proves nothing by itself.
+10. Click **Submit Project** and submit. Show the **preliminary evaluation**, the "Needs human verification" tag
+    on 60-minute execution, and the "not official criteria, human judges decide" note.
+11. Open **View your project card**: "I built … in the NxtWave AI workshop."
+12. Open **Campus Builders**: the project card with score and **Build Yours**. Click it to show the loop closing.
+13. Open `/admin`. **Real data**: the two registrations, one qualified student, one submission.
+14. Switch to **Demo data**: the 7-day, 500-registration simulation, sources, budget and judging criteria.
+15. Click **Generate Insights**; accept one recommendation and reject another with a reason.
 
 ## Testing
 
 `npm run lint` and `npm run build` must pass. The functional checklist (idea scoping, readiness score,
-registration, referral link, referred registration, qualification, submission and evaluation, project card,
-Campus Builders, dashboard, Demo/Real separation, invalid input, AI fallback) was run end to end during
-development against a real Postgres engine loaded with `schema.sql`.
+registration, referral link, referred registration, qualification, Build Mode, submission and evaluation,
+project card, Campus Builders, dashboard, Demo/Real separation, invalid input, AI fallback) was run end to end
+during development against a real Postgres engine loaded with `schema.sql`. Build Mode was also driven in a
+real browser: start, countdown, pause and resume, reload, each phase transition, reaching zero, and a check
+that the same submission scores the same with and without the timer.
 
 ## Known limitations
 
 - **ProjectPitch does not verify the build.** It cannot confirm a project works or was built in 60 minutes.
   The "60-minute execution" score is self-reported and capped; a judge has to open the project.
+- **The Build Mode timer is trust-based.** It lives in the browser, can be paused, restarted or ignored, and is
+  per device. That is intentional: it is an engagement tool, and recording it would invite treating it as
+  proof.
 - **The automated evaluation reads text only.** It can be gamed by writing well. It is a first pass for human
   judges, not a decision.
 - **The readiness score and scope optimizer are rules, not understanding.** They key on tools, step counts and

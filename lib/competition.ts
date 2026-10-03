@@ -40,8 +40,8 @@ export async function getSubmission(registrationId: string): Promise<Submission 
 //   done    – completed (verified by data)
 //   current – the next thing to do
 //   locked  – not available yet
-//   info    – happens outside ProjectPitch (the workshop); never marked done,
-//             because ProjectPitch does not host or verify the build.
+//   info    – the workshop build; never marked done, because ProjectPitch
+//             does not host or verify it. Build Mode's timer is not recorded.
 export type StepState = "done" | "current" | "locked" | "info";
 export type TrackerStep = { id: string; label: string; state: StepState; note?: string };
 
@@ -59,7 +59,7 @@ export function trackerSteps(referrals: number, submission: { score: number | nu
         ? `${referrals} verified ${referrals === 1 ? "referral" : "referrals"} · competition unlocked`
         : "Counts when your friend registers",
     },
-    { id: "build", label: "Build it at the workshop", state: "info", note: "The 60-minute build happens in the workshop" },
+    { id: "build", label: "Build it in 60 minutes", state: "info", note: "At the workshop, with Build Mode keeping time" },
     {
       id: "submit",
       label: "Submit your project",

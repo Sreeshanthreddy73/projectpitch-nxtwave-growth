@@ -30,7 +30,7 @@ const STEPS = [
   { title: "Get your idea", body: "Answer three questions, or bring your own idea. Get an AI project scoped for one hour." },
   { title: "Register", body: "Register for the workshop to unlock your 60-minute build blueprint." },
   { title: "Make it 60-minute ready", body: "See the readiness score, what to leave out, and what to keep." },
-  { title: "Build at the workshop", body: "The 60 minutes of building happen live in the workshop, not here." },
+  { title: "Build at the workshop", body: "Build it live in the workshop. Build Mode keeps the 60-minute clock and shows your current phase." },
   { title: "Submit and get evaluated", body: "Refer one friend to qualify, submit your project, and get a preliminary evaluation." },
   { title: "Campus Builders", body: "Your project gets its own card. Share it, and the next student builds theirs." },
 ];
@@ -43,7 +43,7 @@ export function HowItWorks() {
           <Eyebrow>How it works</Eyebrow>
           <h2 className="text-h1 mt-3 max-w-xl">Before, during and after the workshop.</h2>
           <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-body">
-            ProjectPitch gets your project ready and showcases it afterwards. You do the building in the workshop.
+            ProjectPitch gets your project ready, keeps time while you build, and showcases it afterwards. The building is yours, in the workshop.
           </p>
 
           <div className="relative mt-10">

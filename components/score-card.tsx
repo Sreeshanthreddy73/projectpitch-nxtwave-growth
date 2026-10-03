@@ -5,7 +5,20 @@ import { CheckIcon, cx } from "./ui";
 // A score out of 100 with its five criteria. Used twice with the same
 // criteria: the pre-workshop readiness score and the post-workshop preliminary
 // evaluation. Text carries every number, so nothing depends on colour.
-export function ScoreBreakdown({ total, lines, compact = false }: { total: number; lines: ScoreLine[]; compact?: boolean }) {
+// evaluation: true when showing a post-workshop evaluation. The "60-minute
+// execution" line is then marked as needing human verification, because no
+// automated check (and no timer) can prove it.
+export function ScoreBreakdown({
+  total,
+  lines,
+  compact = false,
+  evaluation = false,
+}: {
+  total: number;
+  lines: ScoreLine[];
+  compact?: boolean;
+  evaluation?: boolean;
+}) {
   return (
     <div className={cx("grid gap-6", !compact && "sm:grid-cols-[auto_1fr] sm:items-center")}>
       <p className="flex items-baseline gap-1">
@@ -16,7 +29,14 @@ export function ScoreBreakdown({ total, lines, compact = false }: { total: numbe
         {lines.map((line) => (
           <li key={line.id}>
             <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="font-medium text-ink">{line.label}</span>
+              <span className="font-medium text-ink">
+                {line.label}
+                {evaluation && line.id === "sixty" && (
+                  <span className="ml-2 rounded-full border border-warn/30 bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn">
+                    Needs human verification
+                  </span>
+                )}
+              </span>
               <span className="shrink-0 font-mono text-xs tabular-nums text-body">
                 {line.score}/{line.max}
               </span>

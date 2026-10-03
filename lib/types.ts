@@ -1,4 +1,6 @@
 import type { Branch, Interest, SkillLevel, Year } from "./options";
+import type { Readiness } from "./readiness";
+import type { Scope } from "./scope";
 
 export type BlueprintInput = {
   branch: Branch;
@@ -19,10 +21,14 @@ export type Blueprint = {
   resume_bullet: string;
 };
 
-// What the browser is allowed to see before registration.
+// What the browser is allowed to see before registration. The readiness score
+// and scope are computed on the server from the full blueprint; the plan
+// itself stays locked.
 export type BlueprintPreview = Pick<Blueprint, "title" | "problem" | "stack" | "difficulty"> & {
   id: string;
   locked_steps: number;
+  readiness: Readiness;
+  scope: Scope;
 };
 
 export type GeneratedBy = "ai" | "fallback";

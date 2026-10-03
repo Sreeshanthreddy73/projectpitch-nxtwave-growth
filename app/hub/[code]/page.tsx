@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BlueprintMeta, BuildTimeline, StackList } from "@/components/blueprint-view";
 import { ProgressTracker } from "@/components/competition";
 import { ReferralProgress } from "@/components/referral-progress";
+import { ScopeCard, ScoreBreakdown } from "@/components/score-card";
 import { CopyText, SharePanel } from "@/components/share-panel";
 import { LoadFailure, SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { SubmitForm } from "@/components/submit-form";
@@ -11,16 +12,19 @@ import { ArrowIcon, Badge, Card, CheckIcon, Eyebrow, LockIcon, SparkIcon, button
 import { ADVANCED_PROJECTS, STARTER_PROMPTS } from "@/content/packs";
 import { splitProblem } from "@/lib/blueprint-text";
 import { getSubmission, isEligible, trackerSteps } from "@/lib/competition";
-import { CAMPAIGN, PRIZES, SIMULATION_NOTE } from "@/lib/config";
+import { CAMPAIGN, COMPETITION_NOTE } from "@/lib/config";
 import { db, unwrap } from "@/lib/db";
-import { inr } from "@/lib/format";
+import { totalScore } from "@/lib/evaluation";
 import { countReferrals } from "@/lib/referrals";
+import { scoreReadiness } from "@/lib/readiness";
 import { REWARD_TIERS, unlockedTiers } from "@/lib/rewards";
+import { scopeFor } from "@/lib/scope";
 import { cleanRef } from "@/lib/tracking-shared";
 import type { Blueprint } from "@/lib/types";
 
-// The hub is the student's personal project workspace and their competition
-// status. The link acts as their private key to the blueprint.
+// The hub is the student's workspace before and after the workshop: the
+// 60-minute-ready project and plan, competition qualification, submission,
+// evaluation and sharing. The link acts as their private key.
 export const metadata: Metadata = { title: "Your project", robots: { index: false, follow: false } };
 
 async function loadHub(code: string) {
@@ -31,14 +35,19 @@ async function loadHub(code: string) {
   const [blueprint, referrals, submission] = await Promise.all([
     db()
       .from("blueprints")
-      .select("title, problem, stack, difficulty, build_plan, resume_bullet")
+      .select("id, title, problem, stack, difficulty, build_plan, resume_bullet, original_idea")
       .eq("registration_id", registration.id)
       .maybeSingle(),
     // Verified referrals: friends who completed registration with this code.
     countReferrals(code),
     getSubmission(registration.id),
   ]);
-  return { registration, blueprint: unwrap(blueprint) as Blueprint | null, referrals, submission };
+  return {
+    registration,
+    blueprint: unwrap(blueprint) as (Blueprint & { id: string; original_idea: string | null }) | null,
+    referrals,
+    submission,
+  };
 }
 
 export default async function HubPage({ params }: { params: Promise<{ code: string }> }) {
@@ -63,14 +72,17 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
   const firstName = registration.name.trim().split(/\s+/)[0];
   const unlocked = unlockedTiers(referrals);
   const eligible = isEligible(referrals);
-  const steps = trackerSteps(referrals, Boolean(submission));
+  const steps = trackerSteps(referrals, submission);
   const { oneLiner, why } = splitProblem(blueprint.problem);
+  const readiness = scoreReadiness(blueprint);
+  const scope = scopeFor(blueprint.original_idea, blueprint.title);
+  const evaluation = submission?.evaluation ?? null;
 
   const status = submission
-    ? "Your project is in the competition."
+    ? "Your project is on Campus Builders. Share it."
     : eligible
-      ? "Your competition entry is unlocked. Submit your project."
-      : "Refer 1 friend to unlock your competition entry.";
+      ? "You qualify for the competition. Build your project at the workshop, then submit it here."
+      : "Next: refer 1 friend to qualify for the competition. You build the project at the workshop.";
 
   return (
     <>
@@ -83,11 +95,11 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
             </Badge>
             {eligible ? (
               <Badge tone="good">
-                <CheckIcon className="size-3.5" /> Competition entry unlocked
+                <CheckIcon className="size-3.5" /> Competition unlocked
               </Badge>
             ) : (
               <Badge>
-                <LockIcon className="size-3" /> Competition entry locked
+                <LockIcon className="size-3" /> Competition locked
               </Badge>
             )}
             {unlocked.includes("builder") && <Badge tone="accent">Campus Builder</Badge>}
@@ -101,27 +113,83 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
         </div>
 
         <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.35fr_1fr]">
-          {/* Left: the project and, once unlocked, the submission */}
+          {/* Left: after the workshop (submission, evaluation), then the project and its plan */}
           <div className="space-y-6">
+            {submission && evaluation && (
+              <Card className="animate-rise border-ai/25 p-6 sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="eyebrow inline-flex items-center gap-1.5 text-ai">
+                    <SparkIcon className="size-3.5" /> Preliminary evaluation
+                  </p>
+                  <Badge tone={evaluation.generated_by === "ai" ? "ai" : "neutral"}>
+                    {evaluation.generated_by === "ai" ? "AI-assisted review" : "Rule-based review"}
+                  </Badge>
+                </div>
+                <div className="mt-5">
+                  <ScoreBreakdown total={submission.score ?? totalScore(evaluation.criteria)} lines={evaluation.criteria} />
+                </div>
+                <p className="mt-5 border-t border-line pt-4 text-xs leading-relaxed text-body">
+                  A first pass based on what you wrote in your submission. It does not open your links, so it cannot
+                  confirm that the project works or that it was built in 60 minutes. Human judges decide the ranking.
+                  These are proposed campaign judging criteria, not official NxtWave criteria. Referrals are not part of
+                  this score.
+                </p>
+              </Card>
+            )}
+
             {eligible && (
               <Card id="submit" className="animate-rise border-accent/30 p-6 sm:p-8">
                 <div className="flex items-center justify-between gap-3">
                   <Eyebrow className="text-accent-dark">Project submission</Eyebrow>
                   <Badge tone="good">
-                    <CheckIcon className="size-3" /> Unlocked
+                    <CheckIcon className="size-3" /> {submission ? "Submitted" : "Unlocked"}
                   </Badge>
                 </div>
-                {!submission && (
+                {submission ? (
                   <>
-                    <h2 className="text-h2 mt-3">Submit your project.</h2>
+                    <h2 className="text-h2 mt-3">Your project is submitted.</h2>
+                    <dl className="mt-4 space-y-3 text-[15px]">
+                      <div>
+                        <dt className="eyebrow text-muted">Project link</dt>
+                        <dd className="mt-1 break-all">
+                          <a
+                            href={submission.project_url}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="font-medium text-ink underline underline-offset-4 hover:text-accent-dark"
+                          >
+                            {submission.project_url}
+                          </a>
+                        </dd>
+                      </div>
+                      {submission.summary && (
+                        <div>
+                          <dt className="eyebrow text-muted">What it does</dt>
+                          <dd className="mt-1 text-body">{submission.summary}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <Link href={`/b/${blueprint.id}`} className={buttonClass("dark", "md")}>
+                        View your project card <ArrowIcon />
+                      </Link>
+                    </div>
+                    <div className="mt-4">
+                      <SubmitForm code={registration.ref_code} existing={submission} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-h2 mt-3">Built it at the workshop? Submit it.</h2>
                     <p className="mt-2 text-body">
-                      Share a link to what you built: a GitHub repo, a deployed demo or a short video.
+                      Add a link to what you built and tell us about it. You get a preliminary evaluation and a public
+                      project card to share.
                     </p>
+                    <div className="mt-5">
+                      <SubmitForm code={registration.ref_code} existing={null} />
+                    </div>
                   </>
                 )}
-                <div className="mt-5">
-                  <SubmitForm code={registration.ref_code} existing={submission} />
-                </div>
               </Card>
             )}
 
@@ -147,12 +215,28 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
             </Card>
 
             <Card className="p-6 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Eyebrow>60-minute build readiness</Eyebrow>
+                <Badge tone="ai">Scored on scope, not on you</Badge>
+              </div>
+              <div className="mt-5">
+                <ScoreBreakdown total={readiness.total} lines={readiness.lines} />
+              </div>
+              <div className="mt-6">
+                <ScopeCard scope={scope} />
+              </div>
+            </Card>
+
+            <Card className="p-6 sm:p-8">
               <div className="flex items-center justify-between gap-3">
-                <Eyebrow>Your 60-minute build</Eyebrow>
+                <Eyebrow>Your 60-minute build blueprint</Eyebrow>
                 <Badge tone="good">
                   <CheckIcon className="size-3" /> Unlocked
                 </Badge>
               </div>
+              <p className="mt-2 text-sm text-body">
+                A plan to follow in the workshop. The 60 minutes of building happen there, not on this page.
+              </p>
               <div className="mt-6">
                 <BuildTimeline build_plan={blueprint.build_plan} />
               </div>
@@ -169,27 +253,22 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                 {blueprint.resume_bullet}
               </p>
               <p className="mt-3 text-sm text-body">
-                Replace the [bracketed] values with numbers you measure yourself when you build it.
+                Use it after you have built the project. Replace the [bracketed] values with numbers you measure yourself.
               </p>
             </div>
           </div>
 
-          {/* Right: competition status, sharing and referrals */}
+          {/* Right: the journey, sharing and referrals */}
           <div className="space-y-6 lg:sticky lg:top-24">
             <Card className="p-6 sm:p-7">
-              <div className="flex items-center justify-between gap-3">
-                <Eyebrow>Your competition entry</Eyebrow>
-                <span className="font-mono text-xs text-muted">
-                  🥇 {inr(PRIZES.first)} · 🥈 {inr(PRIZES.second)}
-                </span>
-              </div>
+              <Eyebrow>Your journey</Eyebrow>
               <div className="mt-4">
                 <ProgressTracker steps={steps} />
               </div>
               <div className="mt-5">
                 {submission ? (
                   <Link href="/leaderboard" className={buttonClass("secondary", "lg", "w-full")}>
-                    See the competition <ArrowIcon />
+                    See Campus Builders <ArrowIcon />
                   </Link>
                 ) : eligible ? (
                   <a href="#submit" className={buttonClass("primary", "lg", "w-full")}>
@@ -201,20 +280,23 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                   </a>
                 )}
               </div>
-              <p className="mt-3 text-xs text-muted">{SIMULATION_NOTE}</p>
+              <p className="mt-3 text-xs leading-relaxed text-muted">
+                A referral qualifies you to enter. It never changes your project score. {COMPETITION_NOTE}
+              </p>
             </Card>
 
             <div id="share" className="rounded-2xl bg-ink p-6 text-white shadow-lift sm:p-7">
-              <p className="eyebrow text-white/50">Invite a friend</p>
+              <p className="eyebrow text-white/50">{submission ? "Share your project" : "Invite a friend"}</p>
               <p className="mt-3 font-display text-2xl font-bold leading-tight tracking-tight">
-                {eligible ? "Keep sharing your project." : "One friend unlocks your entry."}
+                {submission ? `I built ${blueprint.title} with AI.` : eligible ? "Keep sharing your project." : "One friend qualifies you."}
               </p>
               <p className="mt-2 text-[15px] text-white/70">
-                Send your link. It counts when your friend builds their own project and registers. A click alone
-                doesn&apos;t count.
+                {submission
+                  ? "Your link opens your project card. Friends who see a real project build their own."
+                  : "Send your link. It counts when your friend gets their own project idea and registers. A click alone doesn't count."}
               </p>
               <div className="mt-5">
-                <SharePanel code={registration.ref_code} title={blueprint.title} />
+                <SharePanel code={registration.ref_code} title={blueprint.title} built={Boolean(submission)} />
               </div>
             </div>
 

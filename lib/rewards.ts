@@ -6,8 +6,8 @@ export const REWARD_TIERS = [
   {
     id: "starter",
     referrals: 1,
-    title: "Competition entry",
-    blurb: "Unlocks project submission, plus the Starter Prompt Pack (8 prompts for your build).",
+    title: "Competition qualification",
+    blurb: "Qualifies you to submit your project, plus the Starter Prompt Pack (8 prompts for your build).",
   },
   {
     id: "advanced",

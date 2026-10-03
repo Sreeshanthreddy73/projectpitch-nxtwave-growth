@@ -29,12 +29,16 @@ function useCopy() {
   return { state, copy };
 }
 
-export function SharePanel({ code, title }: { code: string; title: string }) {
+// built: true once the student has submitted. The message then leads with the
+// finished project, which is what makes a friend curious.
+export function SharePanel({ code, title, built = false }: { code: string; title: string; built?: boolean }) {
   const origin = useOrigin();
   const { state, copy } = useCopy();
 
   const url = `${origin}/r/${code}`;
-  const message = `I just got my AI project blueprint: "${title}". Get yours in 30 seconds: ${url}`;
+  const message = built
+    ? `I built ${title} with AI in the workshop. Build yours → ${url}`
+    : `I am building "${title}" at the AI workshop. Get your own AI project idea in 30 seconds → ${url}`;
 
   return (
     <div>

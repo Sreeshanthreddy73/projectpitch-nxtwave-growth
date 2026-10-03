@@ -22,7 +22,7 @@ export function Logo({ onDark = false }: { onDark?: boolean }) {
 
 const NAV_LINKS = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/leaderboard", label: "Campus Builders" },
 ];
 
 // Sticky navbar. The mobile menu is a native <details>, so it works without
@@ -39,7 +39,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <Link href="/#generator" className={buttonClass("dark", "sm")}>
-            Build My Project
+            Get My Project Idea
           </Link>
         </nav>
 
@@ -65,7 +65,7 @@ export function SiteHeader() {
               </Link>
             ))}
             <Link href="/#generator" className={buttonClass("primary", "md", "mt-1 w-full")}>
-              Build My Project <ArrowIcon />
+              Get My Project Idea <ArrowIcon />
             </Link>
           </nav>
         </details>
@@ -88,7 +88,7 @@ export function SiteFooter() {
               How it works
             </Link>
             <Link href="/leaderboard" className="hover:text-ink">
-              Leaderboard
+              Campus Builders
             </Link>
           </nav>
         </div>

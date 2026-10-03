@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { Generator } from "@/components/generator";
 import { HeroCard } from "@/components/landing/hero-card";
-import { FinalCta, GrowthLoop, HowItWorks, PrizeStrip, ValueSection } from "@/components/landing/sections";
+import { CompetitionSection, FinalCta, GrowthLoop, HowItWorks, PathStrip, ValueSection } from "@/components/landing/sections";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { Track } from "@/components/track";
 import { ArrowIcon, Eyebrow, buttonClass } from "@/components/ui";
@@ -29,18 +29,12 @@ export default async function LandingPage() {
                 <span aria-hidden className="size-1.5 rounded-full bg-accent" />
                 {copy.eyebrow}
               </p>
-              <h1 className="text-display mt-6">
-                {HERO_HEADLINE.map((word, i) => (
-                  <span key={word} className={i === HERO_HEADLINE.length - 1 ? "block text-accent" : "block"}>
-                    {word}
-                  </span>
-                ))}
-              </h1>
+              <h1 className="text-display mt-6">{HERO_HEADLINE}</h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-body sm:text-xl">{copy.sub}</p>
               <div className="mt-7">
-                <PrizeStrip />
+                <PathStrip />
               </div>
-              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
                 <Link href="#generator" className={buttonClass("primary", "lg")}>
                   {HERO_CTA} <ArrowIcon />
                 </Link>
@@ -55,7 +49,7 @@ export default async function LandingPage() {
         <section id="generator" tabIndex={-1} className="border-y border-line bg-sand/60 outline-none">
           <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:py-20">
             <div className="text-center">
-              <Eyebrow>Step 1 · Build</Eyebrow>
+              <Eyebrow>Step 1 · Get your idea</Eyebrow>
               <h2 className="text-h1 mt-3">Three questions. One project made for you.</h2>
             </div>
             <div className="mt-9 overflow-hidden rounded-3xl border border-line bg-card shadow-lift">
@@ -67,6 +61,7 @@ export default async function LandingPage() {
         <HowItWorks />
         <ValueSection />
         <GrowthLoop />
+        <CompetitionSection />
         <FinalCta cta={HERO_CTA} />
       </main>
       <SiteFooter />

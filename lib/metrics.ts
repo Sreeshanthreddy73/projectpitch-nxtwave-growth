@@ -20,6 +20,7 @@ type Raw = {
     referral_registrations: number;
     eligible: number;
     submissions: number;
+    avg_score: number | null;
     spend_acquisition_inr: number;
     spend_prize_inr: number;
     spend_inr: number;
@@ -154,7 +155,7 @@ export function toSnapshot(m: Metrics) {
       target_registrations: CAMPAIGN.targetRegistrations,
       duration_days: CAMPAIGN.durationDays,
       budget_inr: CAMPAIGN.budgetInr,
-      mechanic: "A student must refer one friend who completes registration to unlock their competition entry and submit a project.",
+      mechanic: "Students get a 60-minute-ready AI project idea, register, build it at the workshop, then submit it. Referring one friend who completes registration qualifies them for the competition. Submitted projects become shareable cards on Campus Builders whose Build Yours button brings in new students.",
       day: m.pace.day,
       days_left: m.pace.daysLeft,
     },
@@ -175,6 +176,7 @@ export function toSnapshot(m: Metrics) {
       referral_registrations: m.totals.referral_registrations,
       students_with_competition_entry_unlocked: m.totals.eligible,
       project_submissions: m.totals.submissions,
+      average_preliminary_project_score: m.totals.avg_score,
       spend_inr: m.totals.spend_inr,
       acquisition_spend_inr: m.totals.spend_acquisition_inr,
       prize_spend_inr: m.totals.spend_prize_inr,

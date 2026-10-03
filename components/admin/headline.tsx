@@ -89,22 +89,23 @@ export function Headline({ m }: { m: Metrics }) {
           label="Competition-eligible students"
           value={num(totals.eligible)}
           sub={`${pct(m.eligibleRate)} of registrants unlocked their entry`}
-          note="Unlocked by one verified referral"
+          note="Qualified by one verified referral"
         />
         <Small
           label="Project submissions"
           value={num(totals.submissions)}
           sub={totals.eligible > 0 ? `${pct(m.submissionRate)} of eligible students` : "No eligible students yet"}
+          note={totals.avg_score !== null ? `Average preliminary score ${totals.avg_score}/100${isDemo ? " (simulated)" : ""}` : undefined}
         />
         <Small
-          label="Acquisition cost / registration"
-          value={inr2(m.acquisitionCostPerRegistration)}
+          label="Cost per registration"
+          value={inr2(m.costPerRegistration)}
           sub={
-            totals.spend_acquisition_inr > 0
-              ? `${inr(totals.spend_acquisition_inr)} ${isDemo ? "simulated" : "recorded"} ad spend ÷ registrations`
-              : "No acquisition spend recorded"
+            totals.spend_inr > 0
+              ? `${inr(totals.spend_inr)} ${isDemo ? "simulated" : "recorded"} spend ÷ registrations`
+              : "No spend recorded"
           }
-          note={`Prizes: ${inr(totals.spend_prize_inr)} ${isDemo ? "simulated" : "recorded"}`}
+          note={`Prizes ${inr(totals.spend_prize_inr)} · paid acquisition ${inr(totals.spend_acquisition_inr)}`}
         />
       </div>
     </div>

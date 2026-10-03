@@ -2,10 +2,13 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { fallbackBlueprint } from "./fallback";
+import { CRITERIA } from "./config";
+import { fallbackEvaluation, type Evaluation, type SubmissionText } from "./evaluation";
+import { fallbackBlueprint, ideaBlueprint } from "./fallback";
 import { fallbackInsights } from "./insights-fallback";
 import type { InsightSnapshot } from "./metrics";
 import { INTERESTS, SKILL_LEVELS } from "./options";
+import { mvpName } from "./scope";
 import type { Blueprint, BlueprintInput, GeneratedBy, InsightContent } from "./types";
 
 // The single integration point for AI. The rest of the app calls these two
@@ -16,6 +19,9 @@ import type { Blueprint, BlueprintInput, GeneratedBy, InsightContent } from "./t
 //   API error / timeout / bad output -> fallback
 //
 // Adding a key later switches on live AI with no other code change.
+//
+// Three tasks: generate a project blueprint, generate growth insights, and
+// give a submitted project a preliminary evaluation.
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
 
@@ -57,6 +63,7 @@ Requirements:
 - stack: 3-5 specific, free or free-tier tools appropriate to the skill level.
 - difficulty: match the student's stated skill level.
 - build_plan: 4-6 steps whose minutes add up to exactly 60. Each step is one concrete action.
+- If the student gives their own idea, keep its subject but cut it down to the smallest version that can be built and shown in 60 minutes: one input, one AI step, one result, a simple screen. No authentication, no complex database, no deployment work. Name the title after that smaller version.
 - resume_bullet: one line in resume style. Use bracketed placeholders like [N] or [X]% wherever a number must come from the student's own measurement. Never invent results.
 
 Write plainly. No hype words.`;
@@ -77,8 +84,11 @@ function blueprintIsUsable(b: Blueprint): boolean {
   );
 }
 
+// idea: the student's own idea, if they typed one. It is scoped down to a
+// 60-minute MVP either by the model or, in the fallback, by lib/scope.ts.
 export async function generateBlueprint(
   input: BlueprintInput,
+  idea: string | null = null,
 ): Promise<{ blueprint: Blueprint; generatedBy: GeneratedBy }> {
   if (aiConfigured()) {
     try {
@@ -91,7 +101,7 @@ export async function generateBlueprint(
         messages: [
           {
             role: "user",
-            content: `Branch: ${input.branch}\nYear: ${input.year}\nSkill level: ${skill.label} (${skill.hint})\nArea of interest: ${interest.label}`,
+            content: `Branch: ${input.branch}\nYear: ${input.year}\nSkill level: ${skill.label} (${skill.hint})\nArea of interest: ${interest.label}${idea ? `\nStudent's own idea: ${idea}` : ""}`,
           },
         ],
         output_config: { format: zodOutputFormat(BlueprintSchema), ...effort },
@@ -105,7 +115,10 @@ export async function generateBlueprint(
       logFailure("blueprint", err);
     }
   }
-  return { blueprint: fallbackBlueprint(input), generatedBy: "fallback" };
+  return {
+    blueprint: idea ? ideaBlueprint(input, idea, mvpName(idea, input.interest)) : fallbackBlueprint(input),
+    generatedBy: "fallback",
+  };
 }
 
 // --- Growth insights ---------------------------------------------------------
@@ -160,4 +173,64 @@ export async function generateInsights(
     }
   }
   return { insight: fallbackInsights(snapshot), generatedBy: "fallback" };
+}
+
+// --- Preliminary project evaluation ------------------------------------------
+
+const EvaluationSchema = z.object({
+  criteria: z.array(z.object({ id: z.string(), score: z.number(), note: z.string() })),
+});
+
+const EVALUATION_SYSTEM = `You give a preliminary review of a student's AI project submission for a campus competition. Human judges make the final decision; your scores are a first pass to help them.
+
+You only see what the student wrote and the links they gave. You cannot open the links, so you cannot confirm that the project works or that it was built in 60 minutes. Score what the written submission supports, and say what a judge should check.
+
+Score each criterion from 0 to its maximum:
+${CRITERIA.map((c) => `- ${c.id}: ${c.label} (max ${c.max})`).join("\n")}
+
+Rules:
+- Return exactly one entry per criterion id above.
+- note: one short sentence, addressed to the student, naming the main reason for the score or what would raise it.
+- "sixty" is self-reported: base it on what the student says they finished and left out, and say it is not verified.
+- Vague or empty answers score low. Do not reward length for its own sake.
+- Referrals, shares and popularity are not part of this score. Ignore them.`;
+
+// Scores a submission on the proposed judging criteria. The result is always
+// labelled preliminary in the UI. Referral counts are deliberately not passed in.
+export async function evaluateSubmission(submission: SubmissionText): Promise<Evaluation> {
+  if (aiConfigured()) {
+    try {
+      const response = await client(20_000).messages.parse({
+        model: MODEL,
+        max_tokens: 4000,
+        system: EVALUATION_SYSTEM,
+        messages: [
+          {
+            role: "user",
+            content: JSON.stringify({
+              project: submission.title,
+              what_it_does: submission.summary,
+              how_ai_is_used: submission.ai_usage,
+              what_works_and_results: submission.result,
+              has_project_link: true,
+              has_demo_link: Boolean(submission.demo_url),
+            }),
+          },
+        ],
+        output_config: { format: zodOutputFormat(EvaluationSchema), ...effort },
+      });
+      const parsed = response.parsed_output;
+      if (response.stop_reason === "end_turn" && parsed) {
+        const criteria = CRITERIA.map((criterion) => {
+          const line = parsed.criteria.find((x) => x.id === criterion.id);
+          return line ? { ...criterion, score: Math.max(0, Math.min(criterion.max, Math.round(line.score))), note: line.note.slice(0, 200) } : null;
+        });
+        if (criteria.every((line) => line !== null)) return { criteria, generated_by: "ai" };
+      }
+      logFailure("evaluation", new Error(`unusable output (stop_reason: ${response.stop_reason})`));
+    } catch (err) {
+      logFailure("evaluation", err);
+    }
+  }
+  return fallbackEvaluation(submission);
 }

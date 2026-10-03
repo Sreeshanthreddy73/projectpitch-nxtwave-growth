@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import { BUDGET_PLAN, CAMPAIGN, PLANNING_ASSUMPTIONS, SOURCE_LABELS } from "@/lib/config";
+import { BUDGET_PLAN, CAMPAIGN, COMPETITION_NOTE, CRITERIA, PLANNING_ASSUMPTIONS, SOURCE_LABELS } from "@/lib/config";
 import { decimal, inr, inr2, num, pct } from "@/lib/format";
 import type { Metrics } from "@/lib/metrics";
 import { VARIANTS } from "@/lib/variants";
@@ -48,13 +48,13 @@ export function Funnel({ m }: { m: Metrics }) {
     { label: "Blueprints generated", value: totals.generators, rate: rates.visitToGenerate, rateLabel: "of visitors" },
     { label: "Registrations", value: totals.registrations, rate: rates.generateToRegister, rateLabel: "of generators" },
     { label: "Registrants who shared", value: totals.sharers, rate: rates.shareRate, rateLabel: "of registrants" },
-    { label: "Entry unlocked (verified referral)", value: totals.eligible, rate: m.eligibleRate, rateLabel: "of registrants" },
-    { label: "Projects submitted", value: totals.submissions, rate: m.submissionRate, rateLabel: "of unlocked" },
+    { label: "Qualified for competition (verified referral)", value: totals.eligible, rate: m.eligibleRate, rateLabel: "of registrants" },
+    { label: "Projects submitted and showcased", value: totals.submissions, rate: m.submissionRate, rateLabel: "of qualified" },
   ];
   const max = Math.max(totals.visitors, 1);
 
   return (
-    <Panel title="Funnel" hint="From first visit to competition entry. An entry unlocks only when a referred friend registers.">
+    <Panel title="Funnel" hint="From first visit to a showcased project. Qualification needs a referred friend to register; the build itself happens at the workshop.">
       <ul className="space-y-3">
         {steps.map((step) => (
           <li key={step.label}>
@@ -478,11 +478,11 @@ export function SpendPanel({ m, onChange }: { m: Metrics; onChange: () => void }
 // datasets and labelled as such; recorded spend lives in the Spend panel.
 export function BudgetPanel({ m }: { m: Metrics }) {
   const isDemo = m.dataset === "demo";
-  const swatch = (i: number) => (i === 0 ? "bg-series" : i === 1 ? "bg-ink" : "bg-ink/50");
+  const swatch = (i: number) => (i === 0 ? "bg-ink" : i === 1 ? "bg-ink/60" : "bg-series");
   return (
     <Panel
       title="Budget allocation"
-      hint={`Simulated campaign allocation of the ${inr(CAMPAIGN.budgetInr)} budget. A plan, not recorded spend.`}
+      hint={`Simulated campaign allocation of the ${inr(CAMPAIGN.budgetInr)} budget: all prize money, no paid ads. A plan, not recorded spend.`}
     >
       <div className="flex h-3 overflow-hidden rounded-full" aria-hidden>
         {BUDGET_PLAN.map((item, i) => (
@@ -509,9 +509,13 @@ export function BudgetPanel({ m }: { m: Metrics }) {
       </ul>
       <dl className="mt-3 grid grid-cols-2 gap-4 border-t border-line pt-4 text-sm">
         <div>
-          <dt className="text-muted">Acquisition cost per registration</dt>
-          <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-ink">{inr2(m.acquisitionCostPerRegistration)}</dd>
-          <dd className="text-xs text-muted">{isDemo ? "Simulated ad budget" : "Recorded acquisition spend"} ÷ all registrations</dd>
+          <dt className="text-muted">Paid acquisition cost per registration</dt>
+          <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-ink">
+            {m.totals.spend_acquisition_inr > 0 ? inr2(m.acquisitionCostPerRegistration) : "₹0"}
+          </dd>
+          <dd className="text-xs text-muted">
+            {m.totals.spend_acquisition_inr > 0 ? (isDemo ? "Simulated" : "Recorded") + " ad spend ÷ registrations" : "No paid acquisition in this dataset"}
+          </dd>
         </div>
         <div>
           <dt className="text-muted">Total cost per registration</dt>
@@ -519,6 +523,46 @@ export function BudgetPanel({ m }: { m: Metrics }) {
           <dd className="text-xs text-muted">{isDemo ? "Simulated spend" : "Recorded spend"} incl. prizes ÷ registrations</dd>
         </div>
       </dl>
+    </Panel>
+  );
+}
+
+// The proposed judging criteria, documented for the campaign owner.
+export function CriteriaPanel({ m }: { m: Metrics }) {
+  const isDemo = m.dataset === "demo";
+  return (
+    <Panel title="Proposed judging criteria" hint="Used for the readiness score before the workshop and the preliminary evaluation after it.">
+      <ul className="divide-y divide-line text-sm">
+        {CRITERIA.map((criterion) => (
+          <li key={criterion.id} className="flex items-center gap-3 py-2.5">
+            <span className="flex-1 text-ink">{criterion.label}</span>
+            <span className="w-24">
+              <span className="block h-1.5 rounded-full bg-paper" aria-hidden>
+                <span className="block h-full rounded-full bg-series" style={{ width: `${(criterion.max / 30) * 100}%` }} />
+              </span>
+            </span>
+            <span className="w-10 text-right font-semibold tabular-nums text-ink">{criterion.max}%</span>
+          </li>
+        ))}
+      </ul>
+      <dl className="mt-3 grid grid-cols-2 gap-4 border-t border-line pt-4 text-sm">
+        <div>
+          <dt className="text-muted">Projects evaluated</dt>
+          <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-ink">{num(m.totals.submissions)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted">Average preliminary score</dt>
+          <dd className="mt-0.5 font-display text-xl font-bold tabular-nums text-ink">
+            {m.totals.avg_score === null ? "—" : `${m.totals.avg_score}/100`}
+          </dd>
+          {isDemo && <dd className="text-xs text-muted">Simulated scores</dd>}
+        </div>
+      </dl>
+      <p className="mt-3 text-xs leading-relaxed text-muted">
+        These are proposed campaign judging criteria, not official NxtWave criteria. The automated score is a first
+        pass over what the student wrote; it does not verify the project or the 60-minute build, and human judges
+        decide. Referrals qualify a student to enter and are not part of the score. {COMPETITION_NOTE}
+      </p>
     </Panel>
   );
 }

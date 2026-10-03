@@ -112,7 +112,7 @@ export function fallbackInsights(s: InsightSnapshot): InsightContent {
         metric: "Blueprint → registration rate",
       },
       share: {
-        action: "Show the locked competition entry and the prize pool directly under the unlocked blueprint, with Invite a Friend as the only button.",
+        action: "After a project is submitted, open the hub on the finished project card with Copy Project Link as the only button.",
         metric: "Share rate",
       },
     };
@@ -150,8 +150,8 @@ export function fallbackInsights(s: InsightSnapshot): InsightContent {
 
   if (actions.length < 3 && rates.measured_k_factor !== null && rates.measured_k_factor < plan.k_factor) {
     actions.push({
-      action: "Message registrants whose entry is still locked: one friend registering unlocks it.",
-      why: `${totals.students_with_competition_entry_unlocked} of ${totals.registrations} registrants have unlocked their entry. Measured K is ${rates.measured_k_factor.toFixed(2)} against a planning assumption of ${plan.k_factor}: ${totals.referral_registrations} referred registrations from ${totals.registrations} registrants.`,
+      action: "Message registrants who have not qualified yet: one friend registering unlocks the competition.",
+      why: `${totals.students_with_competition_entry_unlocked} of ${totals.registrations} registrants have qualified. Measured K is ${rates.measured_k_factor.toFixed(2)} against a planning assumption of ${plan.k_factor}: ${totals.referral_registrations} referred registrations from ${totals.registrations} registrants.`,
       metric: "K-factor",
     });
   }

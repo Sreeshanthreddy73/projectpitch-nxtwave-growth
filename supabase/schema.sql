@@ -119,6 +119,19 @@ alter table spend_entries
   add column if not exists category text not null default 'acquisition'
   check (category in ('acquisition', 'prize'));
 
+-- The student's own idea, if they typed one, before it was scoped to a 60-minute MVP.
+alter table blueprints add column if not exists original_idea text check (char_length(original_idea) <= 120);
+
+-- Competition entry details and its preliminary evaluation.
+--   score      0-100, sum of the criteria below
+--   evaluation { "criteria": [{ "id", "label", "max", "score", "note" }], "generated_by": "ai" | "fallback" }
+-- The criteria are PROPOSED campaign judging criteria, not official NxtWave criteria.
+alter table submissions add column if not exists demo_url   text check (demo_url is null or (demo_url ~ '^https://' and char_length(demo_url) <= 300));
+alter table submissions add column if not exists ai_usage   text not null default '' check (char_length(ai_usage) <= 400);
+alter table submissions add column if not exists result     text not null default '' check (char_length(result) <= 400);
+alter table submissions add column if not exists score      integer check (score between 0 and 100);
+alter table submissions add column if not exists evaluation jsonb;
+
 -- ---------------------------------------------------------------------------
 -- Row level security
 -- ---------------------------------------------------------------------------
@@ -240,6 +253,7 @@ as $$
       -- eligible = students with at least one verified referral (a friend who registered)
       'eligible',               (select count(distinct referred_by) from reg where referred_by is not null),
       'submissions',            (select count(*) from submissions where is_demo = p_demo),
+      'avg_score',              (select round(avg(score)) from submissions where is_demo = p_demo and score is not null),
       'spend_acquisition_inr',  (select coalesce(sum(amount_inr), 0) from spend_entries where is_demo = p_demo and category = 'acquisition'),
       'spend_prize_inr',        (select coalesce(sum(amount_inr), 0) from spend_entries where is_demo = p_demo and category = 'prize'),
       'spend_inr',              (select coalesce(sum(amount_inr), 0) from spend_entries where is_demo = p_demo),
@@ -273,36 +287,49 @@ as $$
   with reg as (
     select * from registrations where is_demo = false
   ),
+  -- verified referrals per student: friends who completed registration
+  referred as (
+    select referred_by, count(*)::int as referrals
+    from reg where referred_by is not null group by 1
+  ),
   referrers as (
     select split_part(trim(r.name), ' ', 1) as first_name, r.college, c.referrals
     from reg r
-    join (
-      select referred_by, count(*)::int as referrals
-      from reg where referred_by is not null group by 1
-    ) c on c.referred_by = r.ref_code
+    join referred c on c.referred_by = r.ref_code
     order by c.referrals desc, r.created_at
     limit 10
   ),
-  colleges as (
-    select min(college) as college, count(*)::int as registrations
-    from reg group by lower(trim(college))
-    order by 2 desc, 1 limit 10
-  )
-  , entries as (
-    select split_part(trim(r.name), ' ', 1) as first_name, r.college, b.title,
-           (select count(*)::int from reg f where f.referred_by = r.ref_code) as referrals,
-           s.created_at
+  -- Campus Builders: submitted projects. Only fields the student agreed to
+  -- make public: first name, college and what they wrote in the submission.
+  entries as (
+    select b.id as blueprint_id, b.title, b.stack, r.ref_code,
+           split_part(trim(r.name), ' ', 1) as first_name, r.college,
+           s.summary, s.project_url, s.demo_url, s.score,
+           coalesce(c.referrals, 0) as referrals, s.created_at
     from submissions s
     join reg r on r.id = s.registration_id
     join blueprints b on b.registration_id = r.id
+    left join referred c on c.referred_by = r.ref_code
     where s.is_demo = false
-    order by 4 desc, s.created_at
-    limit 50
+    order by s.score desc nulls last, s.created_at
+    limit 60
+  ),
+  colleges as (
+    select min(r.college) as college, count(*)::int as registrations,
+           count(s.id)::int as projects
+    from reg r
+    left join submissions s on s.registration_id = r.id and s.is_demo = false
+    group by lower(trim(r.college))
+    order by 2 desc, 1 limit 10
   )
   select jsonb_build_object(
-    'entries',   (select coalesce(jsonb_agg(to_jsonb(e) order by e.referrals desc, e.created_at), '[]'::jsonb) from entries e),
+    'entries',   (select coalesce(jsonb_agg(to_jsonb(e) order by e.score desc nulls last, e.created_at), '[]'::jsonb) from entries e),
     'referrers', (select coalesce(jsonb_agg(to_jsonb(r) order by r.referrals desc), '[]'::jsonb) from referrers r),
-    'colleges',  (select coalesce(jsonb_agg(to_jsonb(c) order by c.registrations desc), '[]'::jsonb) from colleges c)
+    'colleges',  (select coalesce(jsonb_agg(to_jsonb(c) order by c.registrations desc), '[]'::jsonb) from colleges c),
+    'totals',    jsonb_build_object(
+                   'builders', (select count(*) from reg),
+                   'projects', (select count(*) from submissions where is_demo = false),
+                   'colleges', (select count(distinct lower(trim(college))) from reg))
   );
 $$;
 

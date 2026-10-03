@@ -313,6 +313,79 @@ const DIFFICULTY: Record<SkillLevel, Difficulty> = {
   advanced: "Advanced",
 };
 
+// --- Student's own idea ------------------------------------------------------
+// When the student types their own idea, it is scoped to a 60-minute MVP: the
+// name comes from lib/scope.ts and the plan follows the five workshop phases
+// (setup, AI integration, core functionality, interface + testing, demo prep),
+// filled in for the chosen area of interest.
+
+const IDEA_KIT: Record<
+  Interest,
+  { stack: string[]; ai: string; core: string; ui: string; what: string }
+> = {
+  chatbots: {
+    stack: ["Python", "LLM API", "Streamlit"],
+    ai: "Call an LLM API with a prompt that answers only from a short reference text you paste in, and says so when it cannot.",
+    core: "Wire question in → answer out, keep the chat history, and handle an empty or off-topic question.",
+    ui: "Build a Streamlit chat screen and test it with 8 questions, including 2 it should refuse.",
+    what: "answers questions about it from a small reference text",
+  },
+  vision: {
+    stack: ["Python", "Pretrained vision model", "OpenCV", "Streamlit"],
+    ai: "Load a pretrained vision model and run it on three sample images, printing what it detects and its confidence.",
+    core: "Turn the raw detections into one clear result (a label or a count) and draw boxes so mistakes are visible.",
+    ui: "Build a Streamlit image uploader and test it on 8 images with different lighting; note where it fails.",
+    what: "takes an image and returns one clear result",
+  },
+  prediction: {
+    stack: ["Python", "pandas", "scikit-learn", "Streamlit"],
+    ai: "Load a small open dataset, train a simple classifier and print its accuracy on a held-out 20% split.",
+    core: "Write a predict function that takes a handful of inputs and returns a label with a confidence.",
+    ui: "Build a Streamlit form with the inputs and the prediction, and try 8 cases, including edge cases.",
+    what: "takes a few inputs and returns a prediction with a confidence",
+  },
+  automation: {
+    stack: ["Python", "LLM API (structured output)", "Streamlit"],
+    ai: "Call an LLM API that turns one piece of input text into a fixed JSON structure (the decision plus a reason).",
+    core: "Run the task end to end on one real example and show the result for approval instead of acting automatically.",
+    ui: "Build a Streamlit page: paste input, see the proposed action, approve or reject. Test on 8 examples.",
+    what: "takes one input and proposes an action for a person to approve",
+  },
+  recsys: {
+    stack: ["Python", "Sentence-Transformers", "pandas", "Streamlit"],
+    ai: "Embed 30-50 item descriptions with a sentence-transformer and compute similarity to a query.",
+    core: "Return the top five matches with scores, and handle a query that matches nothing well.",
+    ui: "Build a Streamlit search box with a results list, and check 8 queries where you know the right answer.",
+    what: "finds the most relevant items for a query",
+  },
+  voice: {
+    stack: ["Python", "Whisper", "LLM API", "Gradio"],
+    ai: "Transcribe a one-minute audio clip with Whisper and send the text to an LLM for the one thing you need back.",
+    core: "Chain audio → text → result, and show the transcript next to the result so errors are visible.",
+    ui: "Build a Gradio page with an audio uploader, and test it on 5 clips from two different speakers.",
+    what: "turns a short audio clip into a useful result",
+  },
+};
+
+export function ideaBlueprint(input: BlueprintInput, idea: string, mvpTitle: string): Blueprint {
+  const kit = IDEA_KIT[input.interest];
+  const plan: PlanStep[] = [
+    { minutes: 10, step: `Setup: create the project, install the tools, and write down the one input and one output of "${mvpTitle}".` },
+    { minutes: 15, step: `AI integration: ${kit.ai}` },
+    { minutes: 20, step: `Core functionality: ${kit.core}` },
+    { minutes: 10, step: `Interface and testing: ${kit.ui}` },
+    { minutes: 5, step: "Demo preparation: pick the one example that shows it working, and write two lines on what it does and what it cannot do." },
+  ];
+  return {
+    title: mvpTitle,
+    problem: `Your idea, "${idea}", is scoped down to the part you can build and show in one hour: a demo that ${kit.what}. Everything else can come after the workshop. ${BRANCH_ANGLE[input.branch]}`,
+    stack: kit.stack,
+    difficulty: DIFFICULTY[input.skill_level],
+    build_plan: plan,
+    resume_bullet: `Built "${mvpTitle}", a working AI demo (${kit.stack.slice(0, 3).join(", ")}), in a 60-minute workshop; tested on [N] examples with [X]% giving the expected result.`,
+  };
+}
+
 export function fallbackBlueprint(input: BlueprintInput): Blueprint {
   const template = TEMPLATES[input.interest][input.skill_level];
   return {

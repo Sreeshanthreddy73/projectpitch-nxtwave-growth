@@ -15,9 +15,9 @@ export function HeroCard() {
 
       <figure className="relative animate-rise rounded-3xl bg-ink p-6 text-white shadow-lift sm:p-7">
         <div className="flex items-center justify-between gap-3">
-          <p className="eyebrow text-white/55">ProjectPitch AI blueprint</p>
+          <p className="eyebrow text-white/55">ProjectPitch project idea</p>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-ai/25 px-2.5 py-1 text-[11px] font-medium text-[#cfc6ff]">
-            <SparkIcon className="size-3" /> AI generated
+            <SparkIcon className="size-3" /> 60-minute ready
           </span>
         </div>
 
@@ -27,8 +27,8 @@ export function HeroCard() {
 
         <dl className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-white/[0.06] p-3.5">
-            <dt className="eyebrow text-white/50">Build time</dt>
-            <dd className="mt-1 font-display text-xl font-semibold">60 min</dd>
+            <dt className="eyebrow text-white/50">Build readiness</dt>
+            <dd className="mt-1 font-display text-xl font-semibold">88 / 100</dd>
           </div>
           <div className="rounded-2xl bg-white/[0.06] p-3.5">
             <dt className="eyebrow text-white/50">Difficulty</dt>
@@ -48,7 +48,7 @@ export function HeroCard() {
         </div>
 
         <div className="mt-6 border-t border-white/10 pt-5">
-          <p className="eyebrow text-white/50">Build roadmap</p>
+          <p className="eyebrow text-white/50">60-minute build blueprint</p>
           <ol className="mt-3 space-y-2.5">
             {ROADMAP.map((step, i) => (
               <li
@@ -63,7 +63,7 @@ export function HeroCard() {
           </ol>
         </div>
 
-        <figcaption className="mt-6 text-xs text-white/45">Example blueprint. Yours is matched to your interests.</figcaption>
+        <figcaption className="mt-6 text-xs text-white/45">Example. Yours is matched to your interests and built at the workshop.</figcaption>
       </figure>
     </div>
   );

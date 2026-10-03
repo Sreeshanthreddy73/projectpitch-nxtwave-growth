@@ -4,7 +4,7 @@ import { BRANCHES } from "./options";
 
 // CAMPAIGN SIMULATION
 //
-// A simulated run of the full 7-day "Build. Refer. Compete." campaign that
+// A simulated run of the full 7-day idea → workshop → showcase campaign that
 // ends on the 500-registration target. It shows how the plan COULD reach 500;
 // it is not a result. Every row is written with is_demo = true and is only
 // shown in the dashboard's Demo view under "DEMO DATA — CAMPAIGN SIMULATION".
@@ -24,22 +24,15 @@ export const DAILY_REGISTRATIONS = [40, 55, 65, 75, 85, 90, 90];
 
 // Assumed channels: registrations per day, and funnel rates used to derive how
 // many visitors and blueprint generations sit behind those registrations.
+// There is no paid channel: the whole ₹2,000 budget is prize money, and
+// acquisition is organic (communities, clubs and shared project cards).
 const CHANNELS = [
-  {
-    id: "paid",
-    source: "instagram",
-    medium: "paid",
-    campaign: "ig_ads_final_year",
-    perDay: [5, 5, 4, 4, 3, 2, 2], // 25: what ₹500 of ads is assumed to buy
-    visitToGenerate: 0.45,
-    generateToRegister: 0.28,
-  },
   {
     id: "whatsapp",
     source: "whatsapp",
     medium: "community",
     campaign: "student_groups",
-    perDay: [18, 21, 22, 23, 28, 30, 28], // 170
+    perDay: [21, 23, 23, 24, 29, 27, 28], // 175
     visitToGenerate: 0.6,
     generateToRegister: 0.5,
   },
@@ -48,7 +41,7 @@ const CHANNELS = [
     source: "clubs",
     medium: "community",
     campaign: "coding_clubs",
-    perDay: [10, 13, 14, 15, 15, 14, 14], // 95
+    perDay: [11, 14, 15, 16, 15, 15, 14], // 100
     visitToGenerate: 0.62,
     generateToRegister: 0.52,
   },
@@ -57,16 +50,18 @@ const CHANNELS = [
     source: null,
     medium: null,
     campaign: null,
-    perDay: [3, 4, 5, 6, 7, 7, 8], // 40
+    perDay: [4, 5, 6, 7, 7, 8, 8], // 45
     visitToGenerate: 0.5,
     generateToRegister: 0.4,
   },
   {
+    // Students who arrive from a classmate's shared project card or from
+    // "Build Yours" on Campus Builders. Grows as more projects exist to share.
     id: "referral",
     source: "referral",
     medium: null,
     campaign: null,
-    perDay: [4, 12, 20, 27, 32, 37, 38], // 170: the referral gate at work
+    perDay: [4, 13, 21, 28, 34, 40, 40], // 180
     visitToGenerate: 0.7,
     generateToRegister: 0.55,
   },
@@ -140,6 +135,7 @@ type SubmissionRow = {
   registration_id: string;
   project_url: string;
   summary: string;
+  score: number;
   is_demo: true;
   created_at: string;
   updated_at: string;
@@ -263,6 +259,8 @@ export function buildDemoData(now = Date.now()) {
         registration_id: r.id,
         project_url: `https://example.com/demo-projects/${r.ref_code.toLowerCase()}`,
         summary: "Simulated competition entry.",
+        // simulated preliminary score, spread across a plausible range
+        score: Math.round(52 + rand() * 40),
         is_demo: true,
         created_at: iso(submittedAt),
         updated_at: iso(submittedAt),
@@ -274,11 +272,10 @@ export function buildDemoData(now = Date.now()) {
   // Referrers must be inserted before the people they referred.
   registrations.sort((x, y) => x.at - y.at);
 
-  // The budget plan, recorded as simulated spend. The ad budget is tied to the
-  // paid campaign so its cost per registration can be shown.
+  // The budget plan (all prize money), recorded as simulated spend.
   const spend = BUDGET_PLAN.map((item, i) => ({
     label: `${item.label} (simulated)`,
-    utm_campaign: item.id === "ads" ? "ig_ads_final_year" : null,
+    utm_campaign: null,
     amount_inr: item.amountInr,
     category: item.category,
     is_demo: true as const,

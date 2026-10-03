@@ -6,10 +6,12 @@ import { splitProblem } from "@/lib/blueprint-text";
 import { BRANCHES, INTERESTS, SKILL_LEVELS, YEARS } from "@/lib/options";
 import type { BlueprintPreview, GeneratedBy } from "@/lib/types";
 import { BlueprintMeta, LockedPlan, SectionLabel, StackList } from "./blueprint-view";
+import { ScopeCard, ScoreBreakdown } from "./score-card";
 import { ArrowIcon, Badge, Button, CheckIcon, Eyebrow, Field, SparkIcon, cx, inputClass } from "./ui";
 
 // The landing-page product flow in one component:
-//   3 questions → generating → preview (plan locked) + registration → hub.
+//   3 questions (+ optional own idea) → generating → preview with readiness
+//   score and scope (plan locked) + registration → hub.
 // It talks to the same two APIs as before: POST /api/generate and
 // POST /api/register. Attribution is added on the server from cookies.
 
@@ -41,7 +43,7 @@ const INTEREST_HINT: Record<string, string> = {
 };
 
 const QUESTIONS = ["What are you interested in?", "What's your experience level?", "Last one: your branch and year?"];
-const LOADING_MESSAGES = ["Understanding your interests…", "Finding the right project…", "Building your roadmap…"];
+const LOADING_MESSAGES = ["Understanding your interests…", "Scoping it to 60 minutes…", "Checking build readiness…"];
 
 function ErrorBox({ children }: { children: ReactNode }) {
   return (
@@ -109,7 +111,7 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
 
 export function Generator({ cta }: { cta: string }) {
   const router = useRouter();
-  const [inputs, setInputs] = useState({ branch: "", year: "Final year", skill_level: "", interest: "" });
+  const [inputs, setInputs] = useState({ branch: "", year: "Final year", skill_level: "", interest: "", idea: "" });
   const [step, setStep] = useState(0);
   const [stage, setStage] = useState<"questions" | "generating" | "preview" | "unlocked">("questions");
   const [result, setResult] = useState<Result | null>(null);
@@ -250,6 +252,21 @@ export function Generator({ cta }: { cta: string }) {
             <BlueprintMeta difficulty={preview.difficulty} />
           </div>
 
+          <div className="mt-8 rounded-2xl border border-ai/20 bg-ai-soft/50 p-5 sm:p-6">
+            <SectionLabel tag={<Badge tone="ai">Scored on scope, not on you</Badge>}>60-minute build readiness</SectionLabel>
+            <div className="mt-4">
+              <ScoreBreakdown total={preview.readiness.total} lines={preview.readiness.lines} />
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-body">
+              How well this project fits a 60-minute build, using the proposed judging criteria. It rates the plan, not
+              whether you will finish. You build it in the workshop.
+            </p>
+          </div>
+
+          <div className="mt-6">
+            <ScopeCard scope={preview.scope} />
+          </div>
+
           <div className="mt-8 grid gap-8 border-t border-line pt-8 md:grid-cols-[1.3fr_1fr]">
             <div>
               <SectionLabel>Why this project?</SectionLabel>
@@ -264,7 +281,7 @@ export function Generator({ cta }: { cta: string }) {
           </div>
 
           <div className="mt-8 border-t border-line pt-8">
-            <SectionLabel tag={<Badge tone="ai">Full blueprint</Badge>}>60-minute build plan</SectionLabel>
+            <SectionLabel tag={<Badge tone="ai">Full blueprint</Badge>}>60-minute build blueprint</SectionLabel>
             <div className="mt-3">
               <LockedPlan steps={preview.locked_steps} />
             </div>
@@ -290,7 +307,7 @@ export function Generator({ cta }: { cta: string }) {
           <div>
             <h3 className="text-h2">Your project is ready.</h3>
             <p className="mt-2 max-w-xl text-body">
-              Register for the workshop to unlock the complete build plan and resume-ready project bullet. Then refer one friend to unlock your competition entry.
+              Register for the workshop to unlock your 60-minute build blueprint and resume-ready project bullet. You build it in the workshop.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -340,8 +357,9 @@ export function Generator({ cta }: { cta: string }) {
                 onChange={(e) => setDetails({ ...details, consent: e.target.checked })}
               />
               <span>
-                I agree to my details being stored for this workshop registration. If I refer friends, my first name and
-                college may appear on the leaderboard. My email is never shown publicly.
+                I agree to my details being stored for this workshop registration. My first name and college may appear
+                on Campus Builders and on my project card if I refer friends or submit a project. My email is never shown
+                publicly.
               </span>
             </label>
             {fields.consent && (
@@ -454,6 +472,21 @@ export function Generator({ cta }: { cta: string }) {
               </div>
             </fieldset>
 
+            <div>
+              <label htmlFor="idea" className="eyebrow text-muted">
+                Already have an idea? (optional)
+              </label>
+              <input
+                id="idea"
+                className={cx(inputClass, "mt-2.5")}
+                maxLength={120}
+                placeholder="e.g. AI medical diagnosis platform"
+                value={inputs.idea}
+                onChange={(e) => setInputs({ ...inputs, idea: e.target.value })}
+              />
+              <p className="mt-1.5 text-sm text-muted">We&apos;ll scope it down to something you can build in 60 minutes.</p>
+            </div>
+
             {error && <ErrorBox>{error.message}</ErrorBox>}
 
             <Button type="submit" size="lg" className="w-full">
@@ -468,7 +501,7 @@ export function Generator({ cta }: { cta: string }) {
           <ErrorBox>{error.message}</ErrorBox>
         </div>
       )}
-      <p className="mt-6 text-center text-sm text-muted">Takes about 30 seconds. See your project before you sign up.</p>
+      <p className="mt-6 text-center text-sm text-muted">Takes about 30 seconds. See your project idea before you sign up.</p>
     </form>
   );
 }

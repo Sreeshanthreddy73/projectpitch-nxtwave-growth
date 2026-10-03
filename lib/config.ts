@@ -3,31 +3,58 @@
 // values, and are never mixed into the measured numbers.
 
 export const CAMPAIGN = {
-  name: "Build. Refer. Compete.",
+  name: "Idea → Workshop → Showcase",
   workshopTitle: "Build Your First AI Project in 60 Minutes",
   targetRegistrations: 500,
   durationDays: 7,
   budgetInr: 2000,
 } as const;
 
-// How the ₹2,000 is allocated in the campaign plan. This is the plan, not
-// money that has been spent: measured spend lives in the spend_entries table.
+// How the ₹2,000 is allocated in the campaign plan: all of it is prize money
+// for the proposed competition; acquisition is organic (communities, clubs and
+// shared project cards). This is the plan, not money that has been spent:
+// measured spend lives in the spend_entries table.
 export const BUDGET_PLAN = [
-  { id: "ads", label: "Paid acquisition (ads)", amountInr: 500, category: "acquisition" },
-  { id: "prize1", label: "1st prize", amountInr: 1000, category: "prize" },
-  { id: "prize2", label: "2nd prize", amountInr: 500, category: "prize" },
+  { id: "prize1", label: "1st — Best AI Project", amountInr: 1000, category: "prize", basis: "Highest evaluated project" },
+  { id: "prize2", label: "2nd — Runner-up", amountInr: 500, category: "prize", basis: "Second-highest evaluated project" },
+  {
+    id: "people",
+    label: "People's Choice — Most Shared Project",
+    amountInr: 500,
+    category: "prize",
+    basis: "Most verified registrations through the project's card (not clicks)",
+  },
 ] as const;
 
-export const PRIZES = { first: 1000, second: 500, pool: 1500 } as const;
+export const PRIZE_POOL_INR = 2000;
 
-// One verified referral (a friend who completes registration) unlocks the
-// competition entry.
+// Shown wherever prizes or the competition appear.
+export const COMPETITION_NOTE = "Proposed campaign mechanic — not an official NxtWave competition.";
+export const SIMULATION_NOTE =
+  "Proposed campaign mechanic — not an official NxtWave competition. This is a simulation: no real prizes are paid.";
+
+// One verified referral (a friend who completes registration) qualifies a
+// student for the competition. Referrals never affect the project score.
 export const REFERRALS_TO_UNLOCK = 1;
+
+// PROPOSED campaign judging criteria (not official NxtWave criteria). The same
+// five dimensions are used for the pre-workshop readiness score and for the
+// post-workshop evaluation, so students know in advance how they are judged.
+export const CRITERIA = [
+  { id: "functionality", label: "Project functionality", max: 30 },
+  { id: "ai", label: "Meaningful AI implementation", max: 25 },
+  { id: "usefulness", label: "Problem usefulness & originality", max: 20 },
+  { id: "sixty", label: "60-minute execution", max: 15 },
+  { id: "demo", label: "Demo / explanation", max: 10 },
+] as const;
+
+export type CriterionId = (typeof CRITERIA)[number]["id"];
+export type ScoreLine = { id: CriterionId; label: string; max: number; score: number; note: string };
 
 export const PLANNING_ASSUMPTIONS = {
   label: "Planning assumption — replace with measured data",
   // referred registrations ÷ all registrations
-  kFactor: 0.34,
+  kFactor: 0.36,
   visitToGenerate: 0.6,
   generateToRegister: 0.47,
   shareRate: 0.35,
@@ -44,13 +71,11 @@ export const SOURCE_LABELS: Record<string, string> = {
   instagram: "Paid acquisition (Instagram ads)",
   whatsapp: "WhatsApp / student communities",
   clubs: "Clubs / community distribution",
-  referral: "Referral loop",
+  referral: "Shared project cards (referral loop)",
   direct: "Organic / direct",
 };
 
 export const SITE_NAME = "ProjectPitch";
-export const TAGLINE = "Build. Refer. Compete.";
-export const SHORT_PITCH = "Build your first AI project in 60 minutes.";
+export const TAGLINE = "Get your AI project idea. Register. Build it in 60 minutes.";
+export const SHORT_PITCH = "Get your AI project idea, register for the workshop, and build it in 60 minutes.";
 export const DISCLAIMER = "Prototype created for the NxtWave Growth Challenge. Not an official NxtWave page.";
-export const SIMULATION_NOTE =
-  "Campaign simulation: the competition and prizes are part of a proposed plan. No real prizes are paid.";

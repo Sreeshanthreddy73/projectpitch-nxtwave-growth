@@ -1,10 +1,16 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// The only place the service-role key is read. "server-only" makes the build
-// fail if this file is ever imported from a client component.
+// The only place the Supabase secret key is read. "server-only" makes the
+// build fail if this file is ever imported from a client component.
+//
+// Supabase key naming (current): the secret key (sb_secret_...) replaces the
+// old service_role key; it bypasses row level security and must stay on the
+// server. The publishable key (sb_publishable_...) replaces the old anon key.
+// This app does every database call on the server, so it never creates a
+// browser client and does not read the publishable key.
 
-const REQUIRED = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
+const REQUIRED = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const;
 
 export class SetupError extends Error {
   constructor(public missing: string[]) {
@@ -30,7 +36,7 @@ let client: SupabaseClient | null = null;
 export function db(): SupabaseClient {
   const missing = missingDbEnv();
   if (missing.length > 0) throw new SetupError(missing);
-  client ??= createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  client ??= createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return client;
@@ -55,7 +61,7 @@ export function describeSetupProblem(err: unknown): SetupProblem | null {
       steps: [
         "Create a free project at supabase.com.",
         "Copy .env.example to .env.local.",
-        `Fill in ${err.missing.join(" and ")} from Supabase → Project Settings → API.`,
+        `Fill in ${err.missing.join(" and ")} from Supabase → Project Settings → API Keys.`,
         "Run supabase/schema.sql in the Supabase SQL editor.",
         "Restart the dev server (npm run dev).",
       ],
@@ -79,7 +85,7 @@ export function describeSetupProblem(err: unknown): SetupProblem | null {
       title: "Could not connect to Supabase",
       steps: [
         "Check NEXT_PUBLIC_SUPABASE_URL is your project URL (https://xxxx.supabase.co).",
-        "Check SUPABASE_SERVICE_ROLE_KEY is the service_role key, not the anon key.",
+        "Check SUPABASE_SECRET_KEY is the secret key (sb_secret_...), not the publishable key.",
         "Check the Supabase project is not paused, then restart the dev server.",
       ],
     };

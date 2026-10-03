@@ -42,7 +42,7 @@ One Next.js application. No separate backend, queue or auth service.
 Browser ──► proxy.ts            sets session id, A/B variant, first-touch attribution (httpOnly cookies)
         ──► pages (app/)        landing, public card, hub, leaderboard, admin
         ──► route handlers      app/api/*  (server only)
-              ├─ lib/db.ts        Supabase client, service-role key
+              ├─ lib/db.ts        Supabase client, secret key
               ├─ lib/ai.ts        Claude API  ──fails / no key──► deterministic fallback
               ├─ lib/tracking.ts  reads attribution cookies, writes events
               └─ lib/metrics.ts   calls the SQL function dashboard_metrics()
@@ -93,7 +93,8 @@ Copy `.env.example` to `.env.local`.
 | Variable | Required | Secret | Purpose |
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | no | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | **yes** | Server-side database access |
+| `SUPABASE_SECRET_KEY` | yes | **yes** | Server-side database access (replaces the old service-role key) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | no | no | Not read by the app today; kept for a future browser client |
 | `ADMIN_PASSWORD` | for `/admin` | **yes** | Admin dashboard password |
 | `ANTHROPIC_API_KEY` | no | **yes** | Switches on live AI; empty = deterministic fallback |
 | `ANTHROPIC_MODEL` | no | no | Model override (default `claude-opus-5-5`; e.g. `claude-haiku-4-5` for lower cost) |
@@ -114,10 +115,11 @@ If something is missing, nothing crashes, and who sees what depends on the audie
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open **SQL Editor → New query**, paste all of `supabase/schema.sql`, and click **Run**. It is safe to re-run.
-3. Open **Project Settings → API**. Copy the **Project URL** and the **service_role** key into `.env.local`.
+3. Open **Project Settings → API Keys**. Copy the **Project URL**, the **publishable** key and the **secret** key
+   into `.env.local`.
 
 Row level security is enabled on every table with no policies, so the public anon key can read nothing. The app
-only uses the service-role key, on the server.
+only uses the secret key, on the server.
 
 ## Local development
 

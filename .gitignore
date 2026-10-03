@@ -13,6 +13,7 @@ next-env.d.ts
 !.env.example
 *.pem
 *.key
+.env.local
 
 # deployment
 .vercel

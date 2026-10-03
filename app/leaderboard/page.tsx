@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LoadFailure, SiteFooter, SiteHeader } from "@/components/site-chrome";
-import { Badge, Card } from "@/components/ui";
+import { ArrowIcon, Badge, Eyebrow, buttonClass, cx } from "@/components/ui";
 import { db, unwrap } from "@/lib/db";
 import { REWARD_TIERS } from "@/lib/rewards";
 
-export const metadata: Metadata = { title: "Leaderboard" };
+export const metadata: Metadata = { title: "Campus Builders" };
 export const dynamic = "force-dynamic";
 
 type Leaderboard = {
@@ -14,6 +14,19 @@ type Leaderboard = {
 };
 
 const BUILDER_AT = REWARD_TIERS[REWARD_TIERS.length - 1].referrals;
+
+function Rank({ n }: { n: number }) {
+  return (
+    <span
+      className={cx(
+        "grid size-9 shrink-0 place-items-center rounded-full font-display text-sm font-bold",
+        n === 1 ? "bg-accent text-white" : n <= 3 ? "bg-ink text-white" : "bg-sand text-body",
+      )}
+    >
+      {n}
+    </span>
+  );
+}
 
 export default async function LeaderboardPage() {
   let board: Leaderboard;
@@ -30,63 +43,95 @@ export default async function LeaderboardPage() {
     );
   }
 
+  const topCollege = Math.max(...board.colleges.map((c) => c.registrations), 1);
+
   return (
     <>
-      <SiteHeader>
-        <Link href="/#generator" className="font-medium text-ink hover:text-accent-dark">
-          Get your blueprint
-        </Link>
-      </SiteHeader>
-      <main className="mx-auto w-full max-w-4xl px-5 pb-20 pt-4">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Leaderboard</h1>
-        <p className="mt-2 text-body">Students and colleges bringing the most classmates to the workshop.</p>
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-12">
+        <div className="animate-rise text-center">
+          <Eyebrow>Community challenge</Eyebrow>
+          <h1 className="text-display mt-3">Campus Builders</h1>
+          <p className="mt-4 text-lg text-body">Students turning ideas into projects.</p>
+        </div>
 
-        <div className="mt-8 grid items-start gap-6 md:grid-cols-2">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold">Top referrers</h2>
+        <div className="mt-12 grid items-start gap-6 md:grid-cols-2">
+          <section aria-labelledby="builders">
+            <h2 id="builders" className="text-h3">
+              Top builders
+            </h2>
+            <p className="mt-1 text-sm text-muted">Ranked by friends who joined through their project card.</p>
             {board.referrers.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">
-                No referrals yet. Share your blueprint card and be the first name here.
-              </p>
+              <div className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center">
+                <p className="font-display text-lg font-semibold text-ink">No one is on the board yet.</p>
+                <p className="mt-1 text-sm text-body">Share your project card and be the first name here.</p>
+              </div>
             ) : (
-              <ol className="mt-4 divide-y divide-line">
+              <ol className="mt-4 space-y-2.5">
                 {board.referrers.map((r, i) => (
-                  <li key={i} className="flex items-center gap-3 py-2.5">
-                    <span className="w-5 font-mono text-xs tabular-nums text-muted">{i + 1}</span>
+                  <li
+                    key={i}
+                    className="flex animate-rise items-center gap-4 rounded-2xl border border-line bg-card p-4 shadow-card"
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  >
+                    <Rank n={i + 1} />
                     <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
+                      <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
                         {r.first_name}
                         {r.referrals >= BUILDER_AT && <Badge tone="accent">Campus Builder</Badge>}
                       </p>
-                      <p className="truncate text-xs text-muted">{r.college}</p>
+                      <p className="truncate text-sm text-muted">{r.college}</p>
                     </div>
-                    <span className="text-sm font-semibold tabular-nums text-ink">{r.referrals}</span>
+                    <p className="text-right">
+                      <span className="block font-display text-xl font-bold tabular-nums text-ink">{r.referrals}</span>
+                      <span className="block text-xs text-muted">{r.referrals === 1 ? "friend" : "friends"}</span>
+                    </p>
                   </li>
                 ))}
               </ol>
             )}
-          </Card>
+          </section>
 
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold">Colleges</h2>
+          <section aria-labelledby="colleges">
+            <h2 id="colleges" className="text-h3">
+              Colleges building
+            </h2>
+            <p className="mt-1 text-sm text-muted">Students registered from each campus.</p>
             {board.colleges.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">No registrations yet.</p>
+              <div className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center">
+                <p className="font-display text-lg font-semibold text-ink">No campuses yet.</p>
+                <p className="mt-1 text-sm text-body">Yours could be the first.</p>
+              </div>
             ) : (
-              <ol className="mt-4 divide-y divide-line">
+              <ol className="mt-4 space-y-2.5">
                 {board.colleges.map((c, i) => (
-                  <li key={c.college} className="flex items-center gap-3 py-2.5">
-                    <span className="w-5 font-mono text-xs tabular-nums text-muted">{i + 1}</span>
-                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{c.college}</p>
-                    <span className="text-sm tabular-nums text-body">
-                      {c.registrations} {c.registrations === 1 ? "student" : "students"}
-                    </span>
+                  <li key={c.college} className="rounded-2xl border border-line bg-card p-4 shadow-card">
+                    <div className="flex items-center gap-4">
+                      <Rank n={i + 1} />
+                      <p className="min-w-0 flex-1 truncate font-semibold text-ink">{c.college}</p>
+                      <p className="text-sm tabular-nums text-body">
+                        {c.registrations} {c.registrations === 1 ? "student" : "students"}
+                      </p>
+                    </div>
+                    <div aria-hidden className="ml-[52px] mt-2 h-1.5 rounded-full bg-sand">
+                      <div className="h-full rounded-full bg-ink" style={{ width: `${(c.registrations / topCollege) * 100}%` }} />
+                    </div>
                   </li>
                 ))}
               </ol>
             )}
-          </Card>
+          </section>
         </div>
-        <p className="mt-4 text-xs text-muted">
+
+        <div className="mt-14 rounded-3xl bg-ink p-8 text-center text-white sm:p-10">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">Add your name to the board.</h2>
+          <p className="mt-2 text-white/70">Generate your project, share your card, and bring your classmates along.</p>
+          <Link href="/#generator" className={buttonClass("primary", "lg", "mt-6")}>
+            Generate My AI Project <ArrowIcon />
+          </Link>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-muted">
           Shows first names and colleges only, as agreed at registration. Badges are a feature of this prototype.
         </p>
       </main>

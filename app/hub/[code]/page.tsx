@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BlueprintPlan, BlueprintSummary } from "@/components/blueprint-view";
+import { BlueprintMeta, BuildTimeline, StackList } from "@/components/blueprint-view";
 import { ReferralProgress } from "@/components/referral-progress";
-import { SharePanel } from "@/components/share-panel";
+import { CopyText, SharePanel } from "@/components/share-panel";
 import { LoadFailure, SiteFooter, SiteHeader } from "@/components/site-chrome";
-import { Badge, Card, CheckIcon, LockIcon, cx } from "@/components/ui";
+import { Badge, Card, CheckIcon, Eyebrow, LockIcon, SparkIcon, cx } from "@/components/ui";
 import { ADVANCED_PROJECTS, STARTER_PROMPTS } from "@/content/packs";
+import { splitProblem } from "@/lib/blueprint-text";
 import { CAMPAIGN } from "@/lib/config";
 import { db, unwrap } from "@/lib/db";
 import { countReferrals } from "@/lib/referrals";
@@ -14,8 +14,9 @@ import { REWARD_TIERS, unlockedTiers } from "@/lib/rewards";
 import { cleanRef } from "@/lib/tracking-shared";
 import type { Blueprint } from "@/lib/types";
 
-// The hub link acts as the student's private key to their blueprint.
-export const metadata: Metadata = { title: "Your blueprint", robots: { index: false, follow: false } };
+// The hub is the student's personal project workspace. The link acts as their
+// private key to the blueprint.
+export const metadata: Metadata = { title: "Your project", robots: { index: false, follow: false } };
 
 async function loadHub(code: string) {
   const registration = unwrap(
@@ -54,74 +55,118 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
   const { registration, blueprint, referrals } = hub;
   const firstName = registration.name.trim().split(/\s+/)[0];
   const unlocked = unlockedTiers(referrals);
+  const { oneLiner, why } = splitProblem(blueprint.problem);
 
   return (
     <>
-      <SiteHeader>
-        <Link href="/leaderboard" className="hover:text-ink">
-          Leaderboard
-        </Link>
-      </SiteHeader>
-      <main className="mx-auto w-full max-w-6xl px-5 pb-20 pt-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge tone="good">
-            <CheckIcon className="size-3.5" /> Registered
-          </Badge>
-          {unlocked.includes("builder") && <Badge tone="accent">Campus Builder</Badge>}
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-6xl px-5 pb-24 pt-10">
+        <div className="animate-rise">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="good">
+              <CheckIcon className="size-3.5" /> Registered
+            </Badge>
+            {unlocked.includes("builder") && <Badge tone="accent">Campus Builder</Badge>}
+          </div>
+          <h1 className="text-h1 mt-4">Your project is ready, {firstName}.</h1>
+          <p className="mt-3 max-w-2xl text-lg text-body">
+            You&apos;re registered for &ldquo;{CAMPAIGN.workshopTitle}&rdquo;. This page is your private workspace, so
+            bookmark it.
+          </p>
+          <p className="mt-1 text-sm text-muted">This is a prototype, so no live session is scheduled.</p>
         </div>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">You&apos;re in, {firstName}.</h1>
-        <p className="mt-2 max-w-2xl text-body">
-          You&apos;re registered for &ldquo;{CAMPAIGN.workshopTitle}&rdquo;. Here is your full blueprint. Bookmark this
-          page: it is your private link.
-        </p>
-        <p className="mt-1 text-sm text-muted">This is a prototype, so no live session is scheduled.</p>
 
-        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.25fr_1fr]">
-          <Card className="animate-rise p-6 sm:p-8">
-            <BlueprintSummary {...blueprint} />
-            <div className="mt-6 border-t border-line pt-6">
-              <BlueprintPlan {...blueprint} />
-            </div>
-          </Card>
-
+        <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.35fr_1fr]">
+          {/* Left: the project */}
           <div className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold">Share your blueprint</h2>
-              <p className="mt-1 text-sm text-muted">
-                Classmates see your project card and can generate their own. Registrations through your card count
-                towards your rewards.
-              </p>
-              <div className="mt-4">
-                <SharePanel code={registration.ref_code} title={blueprint.title} />
+            <Card className="animate-rise p-6 sm:p-8">
+              <Eyebrow className="text-accent-dark">Your AI project</Eyebrow>
+              <h2 className="text-h1 mt-3">{blueprint.title}</h2>
+              <p className="mt-3 text-lg leading-relaxed text-body">{oneLiner}</p>
+              <div className="mt-6">
+                <BlueprintMeta difficulty={blueprint.difficulty} />
+              </div>
+              <div className="mt-7 grid gap-7 border-t border-line pt-7 sm:grid-cols-[1.3fr_1fr]">
+                <div>
+                  <Eyebrow>Why this project?</Eyebrow>
+                  <p className="mt-2.5 leading-relaxed text-body">{why}</p>
+                </div>
+                <div>
+                  <Eyebrow>Tech stack</Eyebrow>
+                  <div className="mt-2.5">
+                    <StackList stack={blueprint.stack} />
+                  </div>
+                </div>
               </div>
             </Card>
 
-            <Card className="p-6">
+            <Card className="p-6 sm:p-8">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Referral rewards</h2>
+                <Eyebrow>Your 60-minute build</Eyebrow>
+                <Badge tone="good">
+                  <CheckIcon className="size-3" /> Unlocked
+                </Badge>
+              </div>
+              <div className="mt-6">
+                <BuildTimeline build_plan={blueprint.build_plan} />
+              </div>
+            </Card>
+
+            <div className="rounded-2xl border border-ai/25 bg-ai-soft p-6 sm:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <p className="eyebrow inline-flex items-center gap-1.5 text-ai">
+                  <SparkIcon className="size-3.5" /> Resume bullet
+                </p>
+                <CopyText text={blueprint.resume_bullet} />
+              </div>
+              <p className="mt-4 font-display text-xl font-medium leading-snug tracking-tight text-ink">
+                {blueprint.resume_bullet}
+              </p>
+              <p className="mt-3 text-sm text-body">
+                Replace the [bracketed] values with numbers you measure yourself when you build it.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: share and referrals */}
+          <div className="space-y-6 lg:sticky lg:top-24">
+            <div className="rounded-2xl bg-ink p-6 text-white shadow-lift sm:p-7">
+              <p className="eyebrow text-white/50">Share your project</p>
+              <p className="mt-3 font-display text-2xl font-bold leading-tight tracking-tight">
+                Your project card is shareable.
+              </p>
+              <p className="mt-2 text-[15px] text-white/70">Friends can generate their own project from it.</p>
+              <div className="mt-5">
+                <SharePanel code={registration.ref_code} title={blueprint.title} />
+              </div>
+            </div>
+
+            <Card className="p-6 sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <Eyebrow>Your referrals</Eyebrow>
                 <Badge>Prototype rewards</Badge>
               </div>
               <div className="mt-4">
                 <ReferralProgress code={registration.ref_code} initial={referrals} />
               </div>
-              <ul className="mt-5 space-y-2.5">
+              <ul className="mt-6 space-y-2.5">
                 {REWARD_TIERS.map((tier) => {
                   const open = unlocked.includes(tier.id);
                   return (
                     <li
                       key={tier.id}
                       className={cx(
-                        "flex gap-3 rounded-xl border p-3.5",
+                        "flex gap-3 rounded-xl border p-3.5 transition-colors",
                         open ? "border-good/25 bg-good-soft" : "border-line bg-paper",
                       )}
                     >
                       <span
                         className={cx(
                           "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full",
-                          open ? "bg-good text-white" : "bg-line text-muted",
+                          open ? "animate-pop bg-good text-white" : "bg-line text-muted",
                         )}
                       >
-                        {open ? <CheckIcon className="size-3.5" /> : <LockIcon className="size-3.5" />}
+                        {open ? <CheckIcon className="size-3.5" /> : <LockIcon className="size-3" />}
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-ink">
@@ -129,6 +174,7 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
                           <span className="font-normal text-muted">
                             · {tier.referrals} {tier.referrals === 1 ? "referral" : "referrals"}
                           </span>
+                          <span className="sr-only">{open ? " (unlocked)" : " (locked)"}</span>
                         </p>
                         <p className="text-sm text-body">{tier.blurb}</p>
                       </div>
@@ -145,14 +191,15 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
 
         {/* Reward content is only rendered once the server has counted enough referrals. */}
         {unlocked.includes("starter") && (
-          <section className="mt-10 animate-rise">
-            <h2 className="text-xl font-semibold tracking-tight">Starter Prompt Pack</h2>
-            <p className="mt-1 text-sm text-muted">Unlocked with your first referral. Replace the [brackets] with your own details.</p>
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <section className="mt-14 animate-rise">
+            <Eyebrow className="text-good">Unlocked with your first referral</Eyebrow>
+            <h2 className="text-h2 mt-2">Starter Prompt Pack</h2>
+            <p className="mt-2 text-body">Replace the [brackets] with your own details.</p>
+            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {STARTER_PROMPTS.map((item) => (
-                <li key={item.use} className="rounded-xl border border-line bg-card p-4">
+                <li key={item.use} className="rounded-2xl border border-line bg-card p-5">
                   <p className="text-sm font-semibold text-ink">{item.use}</p>
-                  <p className="mt-1.5 font-mono text-[13px] leading-relaxed text-body">{item.prompt}</p>
+                  <p className="mt-2 font-mono text-[13px] leading-relaxed text-body">{item.prompt}</p>
                 </li>
               ))}
             </ul>
@@ -160,15 +207,16 @@ export default async function HubPage({ params }: { params: Promise<{ code: stri
         )}
 
         {unlocked.includes("advanced") && (
-          <section className="mt-10 animate-rise">
-            <h2 className="text-xl font-semibold tracking-tight">Advanced AI Project Pack</h2>
-            <p className="mt-1 text-sm text-muted">Unlocked with three referrals. Three ways to take your project further.</p>
-            <ul className="mt-4 grid gap-3 lg:grid-cols-3">
+          <section className="mt-14 animate-rise">
+            <Eyebrow className="text-good">Unlocked with three referrals</Eyebrow>
+            <h2 className="text-h2 mt-2">Advanced AI Project Pack</h2>
+            <p className="mt-2 text-body">Three ways to take your project further.</p>
+            <ul className="mt-6 grid gap-3 lg:grid-cols-3">
               {ADVANCED_PROJECTS.map((project) => (
-                <li key={project.title} className="rounded-xl border border-line bg-card p-4">
-                  <p className="text-sm font-semibold text-ink">{project.title}</p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-body">{project.brief}</p>
-                  <p className="mt-2 text-sm text-muted">What it proves: {project.proves}</p>
+                <li key={project.title} className="rounded-2xl border border-line bg-card p-5">
+                  <p className="font-semibold text-ink">{project.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-body">{project.brief}</p>
+                  <p className="mt-3 text-sm text-muted">What it proves: {project.proves}</p>
                 </li>
               ))}
             </ul>

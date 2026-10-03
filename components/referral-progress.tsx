@@ -43,35 +43,47 @@ export function ReferralProgress({ code, initial }: { code: string; initial: num
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-ink">
-          <span className="text-3xl font-semibold tabular-nums tracking-tight">{count}</span>{" "}
-          <span className="text-sm text-muted">{count === 1 ? "friend has" : "friends have"} registered through your card</span>
-        </p>
-      </div>
-      <div
-        className="mt-3 h-2 overflow-hidden rounded-full bg-line"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={TOP}
-        aria-valuenow={Math.min(count, TOP)}
-        aria-label="Referral progress"
-      >
+      <p className="flex items-baseline gap-2.5">
+        {/* keyed so the number pops when it changes */}
+        <span key={count} className="animate-pop font-display text-5xl font-bold tabular-nums tracking-tight text-ink">
+          {count}
+        </span>
+        <span className="text-[15px] text-body">{count === 1 ? "friend joined" : "friends joined"}</span>
+      </p>
+
+      <div className="relative mt-5">
         <div
-          className="h-full rounded-full bg-accent transition-[width] duration-500"
-          style={{ width: `${Math.min(count / TOP, 1) * 100}%` }}
-        />
-      </div>
-      <div className="mt-1.5 flex justify-between text-xs text-muted">
-        {[0, ...REWARD_TIERS.map((t) => t.referrals)].map((n) => (
-          <span key={n} className={cx("tabular-nums", count >= n && n > 0 && "font-semibold text-ink")}>
-            {n}
+          className="h-2 overflow-hidden rounded-full bg-line"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={TOP}
+          aria-valuenow={Math.min(count, TOP)}
+          aria-label="Referral progress"
+        >
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
+            style={{ width: `${Math.min(count / TOP, 1) * 100}%` }}
+          />
+        </div>
+        {/* milestone markers at each reward */}
+        {REWARD_TIERS.map((tier) => (
+          <span
+            key={tier.id}
+            aria-hidden
+            className={cx(
+              "absolute top-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 font-mono text-[10px] font-semibold transition-colors duration-500",
+              count >= tier.referrals ? "border-accent bg-accent text-white" : "border-line bg-card text-muted",
+            )}
+            style={{ left: `${(tier.referrals / TOP) * 100}%` }}
+          >
+            {tier.referrals}
           </span>
         ))}
       </div>
-      <p className="mt-3 text-sm text-body">
+
+      <p className="mt-4 text-sm text-body">
         {next
-          ? `${next.referrals - count} more to unlock: ${next.title}.`
+          ? `${next.referrals - count} more to unlock ${next.title}.`
           : "You've unlocked every reward. Thank you for spreading the word."}
       </p>
     </div>

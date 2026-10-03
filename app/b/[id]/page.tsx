@@ -2,18 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { BlueprintSummary } from "@/components/blueprint-view";
+import { BlueprintMeta, StackList } from "@/components/blueprint-view";
 import { LoadFailure, SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { Track } from "@/components/track";
-import { Card, LockIcon } from "@/components/ui";
-import { CAMPAIGN } from "@/lib/config";
+import { ArrowIcon, SparkIcon, buttonClass } from "@/components/ui";
+import { shortProblem } from "@/lib/blueprint-text";
+import { SITE_NAME } from "@/lib/config";
 import { db, unwrap } from "@/lib/db";
 import { isUuid } from "@/lib/tracking-shared";
 import type { Blueprint } from "@/lib/types";
 
-// Public blueprint card: the thing students share. It selects only the four
-// preview fields plus the owner's referral code. No name, email or college is
-// queried, so none can leak.
+// Public project card: the thing students share. It selects only the four
+// preview fields plus the owner's referral code (used in the link, never
+// displayed). No name, email or college is queried, so none can leak.
 
 const loadCard = cache(async (id: string) => {
   const blueprint = unwrap(
@@ -37,29 +38,23 @@ const loadCard = cache(async (id: string) => {
   return { title, problem, stack, difficulty, refCode };
 });
 
-// First two sentences: enough to understand the project, short enough for a card.
-function shortProblem(problem: string): string {
-  const sentences = problem.match(/[^.!?]+[.!?]+/g) ?? [problem];
-  return sentences.slice(0, 2).join("").trim();
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   try {
     const card = isUuid(id) ? await loadCard(id) : null;
-    if (!card) return { title: "Blueprint not found" };
-    const description = `${shortProblem(card.problem)} Get your own AI project blueprint in 30 seconds.`;
+    if (!card) return { title: "Project not found" };
+    const description = `${shortProblem(card.problem)} Generate your own AI project in 30 seconds.`;
     return {
-      title: `${card.title} — an AI project blueprint`,
+      title: `${card.title} — an AI project made with ${SITE_NAME}`,
       description,
-      openGraph: { title: `${card.title} — an AI project blueprint`, description },
+      openGraph: { title: `${card.title} — an AI project made with ${SITE_NAME}`, description },
     };
   } catch {
-    return { title: "AI project blueprint" };
+    return { title: "AI project" };
   }
 }
 
-export default async function BlueprintCardPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
 
@@ -77,41 +72,54 @@ export default async function BlueprintCardPage({ params }: { params: Promise<{ 
   }
   if (!card) notFound();
 
-  const generateHref = card.refCode ? `/?ref=${card.refCode}` : "/";
+  // The referral code rides in the link so the referrer is credited even if
+  // this page was opened without ?ref. It is not shown on the page.
+  const generateHref = card.refCode ? `/?ref=${card.refCode}#generator` : "/#generator";
 
   return (
     <>
       <Track type="card_view" />
       <SiteHeader />
-      <main className="mx-auto w-full max-w-2xl px-5 pb-20 pt-4">
-        <p className="text-sm font-semibold text-accent-dark">
-          {card.refCode ? "A classmate shared their AI project blueprint" : "An AI project blueprint"}
-        </p>
-        <Card className="mt-4 animate-rise p-6 shadow-[0_12px_32px_-12px_rgba(17,17,20,0.12)] sm:p-8">
-          <BlueprintSummary title={card.title} problem={shortProblem(card.problem)} stack={card.stack} difficulty={card.difficulty} />
-          <p className="mt-6 flex items-center gap-2 border-t border-line pt-5 text-sm text-muted">
-            <LockIcon /> The build plan and resume bullet are private to the student who generated this.
-          </p>
-        </Card>
+      <main className="relative overflow-hidden">
+        <div aria-hidden className="bg-dots absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
+        <div className="relative mx-auto w-full max-w-xl px-5 pb-24 pt-12">
+          <p className="text-center text-[15px] font-medium text-body">Someone created this AI project.</p>
 
-        <div className="mt-8 rounded-2xl bg-ink p-6 text-white sm:p-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">What would your project be?</h1>
-          <p className="mt-2 text-white/75">
-            Answer three questions and get a blueprint matched to your branch and skill level, then build it in the
-            &ldquo;{CAMPAIGN.workshopTitle}&rdquo; workshop.
-          </p>
-          <Link
-            href={generateHref}
-            className="mt-5 inline-flex items-center rounded-lg bg-accent px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-accent-dark"
-          >
-            Generate yours
-          </Link>
-          {card.refCode && (
-            <p className="mt-3 text-xs text-white/55">
-              Referred by code <span className="font-mono">{card.refCode}</span>. If you register, it counts towards
-              their rewards.
+          <div className="relative mt-6">
+            <div aria-hidden className="absolute -inset-5 rounded-[2.5rem] bg-ai/15 blur-3xl" />
+            <article className="relative animate-rise rounded-3xl bg-ink p-7 text-white shadow-lift sm:p-9">
+              <div className="flex items-center justify-between gap-3">
+                <p className="eyebrow text-white/55">{SITE_NAME}</p>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-ai/25 px-2.5 py-1 text-[11px] font-medium text-[#cfc6ff]">
+                  <SparkIcon className="size-3" /> AI project blueprint
+                </span>
+              </div>
+              <h1 className="mt-6 font-display text-[32px] font-bold leading-[1.08] tracking-tight text-white sm:text-[40px]">
+                {card.title}
+              </h1>
+              <p className="mt-4 text-[17px] leading-relaxed text-white/75">{shortProblem(card.problem)}</p>
+              <div className="mt-6">
+                <BlueprintMeta difficulty={card.difficulty} onDark />
+              </div>
+              <div className="mt-6">
+                <p className="eyebrow text-white/50">Stack</p>
+                <div className="mt-2.5">
+                  <StackList stack={card.stack} onDark />
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div className="mt-10 text-center">
+            <h2 className="text-h2">What would your project be?</h2>
+            <p className="mx-auto mt-2 max-w-sm text-body">
+              Answer three questions and get an AI project matched to you, with a 60-minute build roadmap.
             </p>
-          )}
+            <Link href={generateHref} className={buttonClass("primary", "lg", "mt-6")}>
+              Generate My Own Project <ArrowIcon />
+            </Link>
+            <p className="mt-3 text-sm text-muted">No experience? Start anyway.</p>
+          </div>
         </div>
       </main>
       <SiteFooter />

@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-paper: #f6f5f1;
+  --color-card: #ffffff;
+  --color-ink: #111114;
+  --color-body: #3b3a37;
+  --color-muted: #6b6a66;
+  --color-line: #e3e1da;
+  --color-accent: #e2481c;
+  --color-accent-dark: #c23a12;
+  --color-accent-soft: #fdeee8;
+  --color-good: #17764b;
+  --color-good-soft: #e6f4ec;
+  --color-warn: #8a5a00;
+  --color-warn-soft: #fbf1d9;
+  --color-series: #2a78d6;
+  --color-series-soft: #e3eefb;
+
+  --animate-rise: rise 0.35s ease-out both;
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

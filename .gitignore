@@ -1,0 +1,27 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# environment and credentials (only the documented template is committed)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# deployment
+.vercel
+
+# logs and OS files
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/

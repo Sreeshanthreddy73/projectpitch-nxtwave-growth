@@ -3,12 +3,12 @@
 A working growth prototype for the NxtWave Growth Challenge: drive registrations for the workshop
 **"Build Your First AI Project in 60 Minutes"** (target: 500 final-year engineering students, 7 days, ₹2,000).
 
-> Prototype for a growth challenge, not an official NxtWave page. Referral rewards in the app are
-> features of this prototype, not NxtWave offers.
+> Prototype created for the NxtWave Growth Challenge. Not an official NxtWave page. Referral rewards in
+> the app are features of this prototype, not NxtWave offers.
 
 ## What the product does
 
-A student answers three questions (branch/year, skill level, interest) and gets a personalised AI project
+A student answers three questions (interest, experience level, branch/year) and gets a personalised AI project
 blueprint. They see a preview straight away; registering for the workshop unlocks the 60-minute build plan
 and a resume bullet. Each registrant gets a public **blueprint card** to share. Classmates who open the card
 generate their own blueprint, and the referral is credited to the sharer.
@@ -66,7 +66,7 @@ Key design points:
 
 ```
 app/
-  page.tsx                  landing page + generator (variant A or B)
+  page.tsx                  landing page: hero (variant A or B), generator, how it works, growth loop
   b/[id]/page.tsx           public blueprint card
   hub/[code]/page.tsx       full blueprint, share panel, referral rewards
   r/[code]/route.ts         short referral link → card
@@ -74,7 +74,7 @@ app/
   admin/                    login + dashboard
   api/generate, register, event, referral/[code]
   api/admin/login, metrics, insights, insights/[id], demo-data, spend
-components/                 UI (generator, share panel, admin dashboard panels)
+components/                 UI: generator, blueprint views, share panel, landing/ sections, admin/ dashboard
 lib/                        db, ai, fallback, tracking, metrics, stats, demo-data, auth, config
 content/packs.ts            content of the prototype reward packs
 supabase/schema.sql         tables, indexes, RLS, SQL functions
@@ -102,8 +102,13 @@ The three secrets are read only in `lib/db.ts`, `lib/auth.ts` and `lib/ai.ts`. T
 `server-only`, so the build fails if one is ever pulled into browser code. `.env*` files are git-ignored
 except `.env.example`.
 
-If something is missing, the app says so: the landing page and the APIs return the exact setup steps instead
-of crashing.
+If something is missing, nothing crashes, and who sees what depends on the audience:
+
+- **Students** see the normal landing page. If generation fails they get "Project generator temporarily
+  unavailable. Please try again shortly." Setup details are never shown on public pages in production.
+- **Developers** get the exact setup steps in the server log (`[setup] ...`), and in a collapsed
+  "Developer details" block on failed pages when running `npm run dev`.
+- **The signed-in admin dashboard** shows the setup steps directly.
 
 ## Supabase setup
 
@@ -180,13 +185,13 @@ The functional checklist below was run end to end during development against a r
 ## 3-minute demo flow
 
 1. Open `/?utm_source=whatsapp&utm_campaign=cse_group_a`.
-2. Choose branch, skill level and interest; generate a blueprint.
+2. Click **Generate My AI Project**, answer the three questions, and generate.
 3. Show the preview and the locked build plan.
 4. Register.
 5. The hub shows the full blueprint.
 6. Copy the blueprint link.
 7. Open it in an incognito window: the public card.
-8. Click **Generate yours**, generate and register a second student.
+8. Click **Generate My Own Project**, generate and register a second student.
 9. Back on the first hub: 1 referral, Starter Prompt Pack unlocked (updates within 10 seconds).
 10. Open `/admin` and sign in. **Real data**: two registrations, one from `whatsapp / cse_group_a`, one from `referral`.
 11. Click **Load Demo Data**: the Demo view shows a full campaign under the simulation banner.
@@ -194,7 +199,16 @@ The functional checklist below was run end to end during development against a r
 13. Read Working / Leaking / Next 24 hours.
 14. Accept one recommendation and reject another, typing the reason for each.
 
-Add `?v=a` or `?v=b` to the landing URL to force a variant when demonstrating the A/B test.
+Add `?v=a` or `?v=b` to the landing URL to force a variant when demonstrating the A/B test. Variant A is the
+resume hook ("...an AI project your resume can show"); variant B is the build hook ("...an AI project you can
+actually build"). Only the hero message differs; the CTA and the generator are identical.
+
+## Design system
+
+Defined in `app/globals.css` and `components/ui.tsx`: warm neutral background, near-black ink, one action
+colour (vermilion) for CTAs and selection, and a violet accent used only for AI/generated states. Headlines use
+Bricolage Grotesque, body text Geist, labels Geist Mono. Animations are CSS-only and switch off under
+`prefers-reduced-motion`.
 
 ## Known limitations
 

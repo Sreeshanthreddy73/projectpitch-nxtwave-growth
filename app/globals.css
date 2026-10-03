@@ -1,54 +1,105 @@
 @import "tailwindcss";
 
+/* ProjectPitch design system
+   Colour roles: ink (text, dark surfaces) · paper (page) · card (surfaces)
+   accent  = the one action colour (CTAs, selection, progress)
+   ai      = generated / AI states only (badges, indicators)
+   good / warn = status. series = chart marks. */
+
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  --color-paper: #f6f5f1;
+  --color-paper: #faf8f4;
+  --color-sand: #f2eee6;
   --color-card: #ffffff;
-  --color-ink: #111114;
-  --color-body: #3b3a37;
-  --color-muted: #6b6a66;
-  --color-line: #e3e1da;
-  --color-accent: #e2481c;
-  --color-accent-dark: #c23a12;
-  --color-accent-soft: #fdeee8;
+  --color-ink: #0e0e12;
+  --color-ink-soft: #1b1b22;
+  --color-body: #3f3e3b;
+  --color-muted: #6f6d68;
+  --color-line: #e7e3da;
+  --color-accent: #d9400b;
+  --color-accent-dark: #b93406;
+  --color-accent-soft: #fff0e8;
+  --color-ai: #6246ea;
+  --color-ai-soft: #efecff;
   --color-good: #17764b;
   --color-good-soft: #e6f4ec;
   --color-warn: #8a5a00;
   --color-warn-soft: #fbf1d9;
   --color-series: #2a78d6;
-  --color-series-soft: #e3eefb;
 
-  --animate-rise: rise 0.35s ease-out both;
+  --shadow-card: 0 1px 2px rgba(14, 14, 18, 0.04), 0 8px 24px -12px rgba(14, 14, 18, 0.1);
+  --shadow-lift: 0 2px 4px rgba(14, 14, 18, 0.05), 0 24px 48px -20px rgba(14, 14, 18, 0.22);
+
+  --animate-rise: rise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: fade 0.3s ease-out both;
+  --animate-pop: pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
   @keyframes rise {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(10px);
     }
     to {
       opacity: 1;
       transform: none;
     }
   }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
 }
 
 html {
   color-scheme: light;
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--color-paper);
   color: var(--color-body);
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01";
 }
 
-h1,
-h2,
-h3 {
-  color: var(--color-ink);
-  text-wrap: balance;
+/* In the base layer so utilities such as text-white can override it. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    color: var(--color-ink);
+    text-wrap: balance;
+  }
+}
+
+/* Anchored sections stop below the sticky navbar. */
+[id] {
+  scroll-margin-top: 5.5rem;
 }
 
 :focus-visible {
@@ -56,8 +107,63 @@ h3 {
   outline-offset: 2px;
 }
 
+/* Type scale: Display → H1 → H2 → H3 → Body → Caption */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 4.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.2vw, 2.75rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+@utility text-h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.2vw, 2.125rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+@utility text-h3 {
+  font-family: var(--font-display);
+  font-size: 1.1875rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  font-weight: 650;
+}
+/* Small uppercase label used above headings and inside cards. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Faint dot grid behind the hero. */
+@utility bg-dots {
+  background-image: radial-gradient(rgba(14, 14, 18, 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+/* Loading placeholder bar. */
+@utility skeleton {
+  background: linear-gradient(90deg, var(--color-line) 25%, #f4f1ea 50%, var(--color-line) 75%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
   }

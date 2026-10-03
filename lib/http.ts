@@ -6,11 +6,32 @@ export function jsonError(status: number, error: string, message: string, extra?
   return NextResponse.json({ error, message, ...extra }, { status });
 }
 
-// Last-resort handler for route handlers: setup problems become a 503 with
-// instructions, anything else a generic 500 (details stay in the server log).
-export function routeError(err: unknown) {
+export const UNAVAILABLE_MESSAGE = "Project generator temporarily unavailable. Please try again shortly.";
+
+// Writes setup instructions to the server log, where the developer will see them.
+export function logSetupProblem(err: unknown): boolean {
   const setup = describeSetupProblem(err);
-  if (setup) return jsonError(503, "setup_required", setup.title, { steps: setup.steps });
+  if (!setup) return false;
+  const steps = setup.steps.map((step, i) => `  ${i + 1}. ${step}`);
+  console.warn([`[setup] ${setup.title}`, ...steps].join("\n"));
+  return true;
+}
+
+// Last-resort handler for route handlers.
+//
+// Setup problems (missing env vars, missing tables, unreachable database) are
+// developer diagnostics, so who sees them depends on the audience:
+//   "public" – students get a short, friendly message; the exact steps go to
+//              the server log.
+//   "admin"  – the signed-in dashboard gets the steps in the response.
+// Anything else is a generic 500 with details kept in the server log.
+export function routeError(err: unknown, audience: "public" | "admin" = "public") {
+  const setup = describeSetupProblem(err);
+  if (setup) {
+    if (audience === "admin") return jsonError(503, "setup_required", setup.title, { steps: setup.steps });
+    logSetupProblem(err);
+    return jsonError(503, "unavailable", UNAVAILABLE_MESSAGE);
+  }
   console.error("[api] unexpected error:", err instanceof Error ? err.message : err);
   return jsonError(500, "server_error", "Something went wrong on our side. Please try again.");
 }

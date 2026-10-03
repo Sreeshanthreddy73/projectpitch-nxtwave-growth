@@ -23,4 +23,6 @@ export const AB_MIN_VISITORS_PER_VARIANT = 100;
 export const MIN_VISITORS_TO_RANK = 50;
 
 export const SITE_NAME = "ProjectPitch";
-export const DISCLAIMER = "Prototype for a growth challenge, not an official NxtWave page.";
+export const TAGLINE = "Turn your idea into an AI project you can actually build.";
+export const SHORT_PITCH = "Build your first AI project in 60 minutes.";
+export const DISCLAIMER = "Prototype created for the NxtWave Growth Challenge. Not an official NxtWave page.";

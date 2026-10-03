@@ -1,85 +1,64 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Generator } from "@/components/generator";
-import { SetupNotice, SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { HeroCard } from "@/components/landing/hero-card";
+import { FinalCta, GrowthLoop, HowItWorks, ValueSection } from "@/components/landing/sections";
+import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { Track } from "@/components/track";
-import { Card } from "@/components/ui";
-import { CAMPAIGN } from "@/lib/config";
-import { describeSetupProblem, missingDbEnv, SetupError } from "@/lib/db";
-import { VARIANTS, type Variant } from "@/lib/variants";
-
-const STEPS = [
-  { title: "Generate", body: "Three choices in, one project blueprint out: the problem, the stack and the difficulty." },
-  { title: "Unlock", body: "Register for the workshop to get the 60-minute build plan and a ready-made resume bullet." },
-  { title: "Share", body: "Send your blueprint card to classmates. Each one who registers unlocks more for you." },
-];
+import { ArrowIcon, Eyebrow, buttonClass } from "@/components/ui";
+import { HERO_CTA, VARIANTS, type Variant } from "@/lib/variants";
 
 export default async function LandingPage() {
-  // proxy.ts assigns the variant and passes it in a request header.
+  // proxy.ts assigns the A/B variant and passes it in a request header.
   const assigned = (await headers()).get("x-pp-variant");
   const variant: Variant = assigned === "b" ? "b" : "a";
   const copy = VARIANTS[variant];
 
-  const missing = missingDbEnv();
-  const setup = missing.length > 0 ? describeSetupProblem(new SetupError(missing)) : null;
-
   return (
     <>
-      {!setup && <Track type="visit" />}
-      <SiteHeader>
-        <Link href="/leaderboard" className="hover:text-ink">
-          Leaderboard
-        </Link>
-      </SiteHeader>
+      <Track type="visit" />
+      <SiteHeader />
 
-      <main className="mx-auto w-full max-w-6xl px-5 pb-20">
-        <section className="grid items-start gap-10 pt-6 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-14">
-          <div className="lg:sticky lg:top-10">
-            <p className="text-sm font-semibold text-accent-dark">{copy.eyebrow}</p>
-            <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-[56px]">
-              {copy.headline}
-            </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-body">{copy.sub}</p>
-
-            <dl className="mt-8 hidden max-w-xl grid-cols-3 gap-4 border-t border-line pt-6 text-sm lg:grid">
-              <div>
-                <dt className="text-muted">Workshop</dt>
-                <dd className="mt-1 font-medium text-ink">{CAMPAIGN.workshopTitle}</dd>
+      <main>
+        {/* Hero: what it is, why it matters, what to do next. */}
+        <section className="relative overflow-hidden">
+          <div aria-hidden className="bg-dots absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
+          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-20 pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:pb-28 lg:pt-20">
+            <div className="animate-rise">
+              <p className="eyebrow inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-ink">
+                <span aria-hidden className="size-1.5 rounded-full bg-accent" />
+                {copy.eyebrow}
+              </p>
+              <h1 className="text-display mt-6">{copy.headline}</h1>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-body sm:text-xl">{copy.sub}</p>
+              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
+                <Link href="#generator" className={buttonClass("primary", "lg")}>
+                  {HERO_CTA} <ArrowIcon />
+                </Link>
+                <p className="text-[15px] text-muted">No experience? Start anyway.</p>
               </div>
-              <div>
-                <dt className="text-muted">You need</dt>
-                <dd className="mt-1 font-medium text-ink">A laptop and basic Python, or none</dd>
-              </div>
-              <div>
-                <dt className="text-muted">You leave with</dt>
-                <dd className="mt-1 font-medium text-ink">A working project and a resume line</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div id="generator">
-            {setup ? (
-              <SetupNotice problem={setup} />
-            ) : (
-              <Card className="overflow-hidden shadow-[0_1px_2px_rgba(17,17,20,0.04),0_12px_32px_-12px_rgba(17,17,20,0.12)]">
-                <Generator cta={copy.cta} />
-              </Card>
-            )}
+            </div>
+            <HeroCard />
           </div>
         </section>
 
-        <section className="mt-20 border-t border-line pt-12">
-          <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
-          <ol className="mt-6 grid gap-4 sm:grid-cols-3">
-            {STEPS.map((step, i) => (
-              <li key={step.title} className="rounded-2xl border border-line bg-card p-5">
-                <span className="font-mono text-xs text-muted">0{i + 1}</span>
-                <h3 className="mt-2 text-base font-semibold">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed">{step.body}</p>
-              </li>
-            ))}
-          </ol>
+        {/* The generator: the product itself. */}
+        <section id="generator" tabIndex={-1} className="border-y border-line bg-sand/60 outline-none">
+          <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:py-20">
+            <div className="text-center">
+              <Eyebrow>Project generator</Eyebrow>
+              <h2 className="text-h1 mt-3">Three questions. One project made for you.</h2>
+            </div>
+            <div className="mt-9 overflow-hidden rounded-3xl border border-line bg-card shadow-lift">
+              <Generator cta={HERO_CTA} />
+            </div>
+          </div>
         </section>
+
+        <HowItWorks />
+        <ValueSection />
+        <GrowthLoop />
+        <FinalCta cta={HERO_CTA} />
       </main>
       <SiteFooter />
     </>
